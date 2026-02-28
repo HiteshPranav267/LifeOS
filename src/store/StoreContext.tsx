@@ -77,6 +77,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const currentUserId = useRef<string | undefined>(undefined);
     const lastCloudSyncStr = useRef<string>('');
     const lastServerTime = useRef<number>(0);
+    const lastLocalMutation = useRef<number>(0);
 
     // 1. Auth & Session Management
     useEffect(() => {
@@ -192,8 +193,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     });
                     if (!error) {
                         setIsCloudSynced(true);
-                        // We update lastCloudSyncStr above (optimistically) but 
-                        // this is the confirmation that it actually reached the cloud.
+                        // Confirmation that our data is now the server's truth
+                        lastServerTime.current = Date.now();
                     }
                 } catch (e) {
                     console.warn('[LifeOS] Cloud sync delay');
@@ -244,7 +245,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         // CRITICAL: Only apply if:
                         // 1. Data is string-different from what we currently have
                         // 2. AND the server timestamp is newer than our last known clean server sync
-                        if (newStr !== lastCloudSyncStr.current && serverUpdatedAt > lastServerTime.current) {
+                        // 3. AND we haven't made a local edit very recently that the server might not have yet
+                        const isNewerThanLastSync = serverUpdatedAt > lastServerTime.current;
+                        const isNotConflictWithLocal = serverUpdatedAt > lastLocalMutation.current;
+
+                        if (newStr !== lastCloudSyncStr.current && isNewerThanLastSync && isNotConflictWithLocal) {
                             console.log('[LifeOS] Cloud update received from server');
                             lastCloudSyncStr.current = newStr;
                             lastServerTime.current = serverUpdatedAt;
@@ -286,14 +291,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         window.location.href = '/';
     };
 
-    const setTasks = (tasks: Task[]) => setStore(prev => ({ ...prev, tasks }));
-    const setEvents = (events: Event[]) => setStore(prev => ({ ...prev, events }));
-    const setHabits = (habits: Habit[]) => setStore(prev => ({ ...prev, habits }));
-    const setBrainDumps = (brainDumps: BrainDump[]) => setStore(prev => ({ ...prev, brainDumps }));
-    const setWeeklyFocus = (weeklyFocus: WeeklyFocus[]) => setStore(prev => ({ ...prev, weeklyFocus }));
-    const setTransactions = (transactions: Transaction[]) => setStore(prev => ({ ...prev, transactions }));
-    const setBirthdays = (birthdays: Birthday[]) => setStore(prev => ({ ...prev, birthdays }));
-    const setTheme = (theme: 'light' | 'dark') => setStore(prev => ({ ...prev, settings: { ...prev.settings, theme } }));
+    const updateStore = (updater: (prev: Store) => Store) => {
+        setStore(prev => {
+            lastLocalMutation.current = Date.now();
+            return updater(prev);
+        });
+    };
+
+    const setTasks = (tasks: Task[]) => updateStore(prev => ({ ...prev, tasks }));
+    const setEvents = (events: Event[]) => updateStore(prev => ({ ...prev, events }));
+    const setHabits = (habits: Habit[]) => updateStore(prev => ({ ...prev, habits }));
+    const setBrainDumps = (brainDumps: BrainDump[]) => updateStore(prev => ({ ...prev, brainDumps }));
+    const setWeeklyFocus = (weeklyFocus: WeeklyFocus[]) => updateStore(prev => ({ ...prev, weeklyFocus }));
+    const setTransactions = (transactions: Transaction[]) => updateStore(prev => ({ ...prev, transactions }));
+    const setBirthdays = (birthdays: Birthday[]) => updateStore(prev => ({ ...prev, birthdays }));
+    const setTheme = (theme: 'light' | 'dark') => updateStore(prev => ({ ...prev, settings: { ...prev.settings, theme } }));
 
     return (
         <StoreContext.Provider value={{
