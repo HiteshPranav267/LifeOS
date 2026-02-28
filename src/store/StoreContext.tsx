@@ -75,6 +75,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isReady, setIsReady] = useState(false);
     const isInitialMount = useRef(true);
     const currentUserId = useRef<string | undefined>(undefined);
+    const lastCloudSyncStr = useRef<string>('');
 
     // 1. Auth & Session Management
     useEffect(() => {
@@ -148,6 +149,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             // Ensure settings exist
             if (!initialData.settings) initialData.settings = { theme: 'dark' };
 
+            lastCloudSyncStr.current = JSON.stringify(initialData);
             setStore(initialData);
             saveLocalStore(initialData, userId);
             setIsReady(true);
@@ -165,6 +167,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return;
         }
 
+        const currentStoreStr = JSON.stringify(store);
+        if (currentStoreStr === lastCloudSyncStr.current) {
+            return; // No meaningful change to save
+        }
+
         setIsSaving(true);
         const timer = setTimeout(async () => {
             const userId = currentUserId.current;
@@ -180,7 +187,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         data: store,
                         updated_at: new Date().toISOString()
                     });
-                    if (!error) setIsCloudSynced(true);
+                    if (!error) {
+                        setIsCloudSynced(true);
+                        lastCloudSyncStr.current = currentStoreStr; // Mark as saved so we don't re-upload
+                    }
                 } catch (e) {
                     console.warn('[LifeOS] Cloud sync delay');
                 }
@@ -190,6 +200,54 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
         return () => clearTimeout(timer);
     }, [store, isReady, session]);
+
+    // 5. Realtime External Sync Subscription
+    useEffect(() => {
+        if (!session?.user?.id || !isReady) return;
+
+        const userId = session.user.id;
+
+        const subscription = supabase
+            .channel('lifeos_realtime')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: SYNC_TABLE,
+                    filter: `id=eq.${userId}`
+                },
+                (payload) => {
+                    if (payload.new && (payload.new as any).data) {
+                        const newData = (payload.new as any).data as Store;
+                        // Defensive hydration
+                        if (!newData.transactions) newData.transactions = [];
+                        if (!newData.birthdays) newData.birthdays = [];
+                        if (!newData.weeklyFocus) newData.weeklyFocus = [];
+                        if (!newData.brainDumps) newData.brainDumps = [];
+                        if (!newData.habits) newData.habits = [];
+                        if (!newData.events) newData.events = [];
+                        if (!newData.tasks) newData.tasks = [];
+                        if (!newData.settings) newData.settings = { theme: 'dark' };
+
+                        const newStr = JSON.stringify(newData);
+                        // Only merge if it's strictly different from what we already sent to the cloud!
+                        // This prevents endless reflections (Save -> Receive -> Save -> Receive)
+                        if (newStr !== lastCloudSyncStr.current) {
+                            console.log('[LifeOS] Silent background sync from another device!');
+                            lastCloudSyncStr.current = newStr; // lock reflection
+                            setStore(newData);
+                            saveLocalStore(newData, userId);
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(subscription);
+        };
+    }, [session?.user?.id, isReady]);
 
     const forceCloudPull = async () => {
         if (!session) return;
