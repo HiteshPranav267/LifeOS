@@ -11,6 +11,7 @@ const CalendarPage = () => {
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [time, setTime] = useState('12:00');
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
     const handleSave = () => {
         if (!title.trim()) return;
@@ -73,21 +74,34 @@ const CalendarPage = () => {
             const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
             days.push(
-                <div key={d} className="h-14 flex flex-col items-center justify-center relative group">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isToday ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]' : 'hover:bg-[var(--bg-elevated)]'}`}>
+                <div
+                    key={d}
+                    className="h-14 flex flex-col items-center justify-center relative group cursor-pointer"
+                    onClick={() => setSelectedDate(selectedDate === dateStr ? null : dateStr)}
+                >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${selectedDate === dateStr
+                            ? 'bg-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.5)]'
+                            : isToday
+                                ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]'
+                                : 'hover:bg-[var(--bg-elevated)]'
+                        }`}>
                         <span className="text-xs font-semibold">{d}</span>
                     </div>
-                    {hasEvent && <div className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-500" />}
+                    {hasEvent && <div className={`absolute bottom-1 w-1 h-1 rounded-full transition-colors ${selectedDate === dateStr ? 'bg-white' : 'bg-blue-500'}`} />}
                 </div>
             );
         }
         return days;
     };
 
-    const upcoming = [...store.events]
-        .filter(e => new Date(e.date) >= new Date())
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-        .slice(0, 5);
+    const displayedEvents = selectedDate
+        ? store.events
+            .filter(e => e.date === selectedDate)
+            .sort((a, b) => a.time.localeCompare(b.time))
+        : [...store.events]
+            .filter(e => new Date(e.date).getTime() >= new Date().setHours(0, 0, 0, 0))
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .slice(0, 5);
 
     return (
         <div className="flex flex-col gap-10 max-w-2xl mx-auto">
@@ -97,7 +111,10 @@ const CalendarPage = () => {
                     <h1 className="text-3xl font-bold mt-2">Timeline.</h1>
                 </div>
                 <button
-                    onClick={() => setIsAdding(true)}
+                    onClick={() => {
+                        setIsAdding(true);
+                        setDate(selectedDate || new Date().toISOString().split('T')[0]);
+                    }}
                     className="w-14 h-14 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center shadow-lg active:scale-90 transition-transform"
                 >
                     <Plus size={24} />
@@ -112,10 +129,10 @@ const CalendarPage = () => {
                             {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </span>
                         <div className="flex gap-2">
-                            <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 hover:bg-[var(--bg-elevated)] rounded-full transition-colors">
+                            <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-2 hover:bg-[var(--bg-elevated)] rounded-full transition-colors">
                                 <ChevronLeft size={20} />
                             </button>
-                            <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-2 hover:bg-[var(--bg-elevated)] rounded-full transition-colors">
+                            <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-2 hover:bg-[var(--bg-elevated)] rounded-full transition-colors">
                                 <ChevronRight size={20} />
                             </button>
                         </div>
@@ -130,11 +147,15 @@ const CalendarPage = () => {
                     </div>
                 </div>
 
-                {/* Upcoming Events */}
+                {/* Events List */}
                 <div>
-                    <span className="section-label">Upcoming</span>
+                    <span className="section-label">
+                        {selectedDate
+                            ? `Events for ${new Date(selectedDate).toLocaleString('default', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                            : 'Upcoming'}
+                    </span>
                     <div className="flex flex-col gap-4">
-                        {upcoming.length > 0 ? upcoming.map(e => (
+                        {displayedEvents.length > 0 ? displayedEvents.map(e => (
                             <div key={e.id} className="card flex items-center justify-between group interactive-card" onClick={() => openEdit(e)}>
                                 <div className="flex items-center gap-6">
                                     <div className="flex flex-col items-center justify-center w-12 h-12 bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border)]">
@@ -156,8 +177,11 @@ const CalendarPage = () => {
                                 </div>
                             </div>
                         )) : (
-                            <div className="p-16 text-center text-[var(--text-secondary)] italic text-lg border-2 border-dashed border-[var(--border)] rounded-3xl">
-                                No upcoming events.
+                            <div className="p-16 text-center text-[var(--text-secondary)] italic text-lg border-2 border-dashed border-[var(--border)] rounded-3xl cursor-pointer hover:bg-[var(--bg-elevated)] transition-colors" onClick={() => {
+                                setIsAdding(true);
+                                setDate(selectedDate || new Date().toISOString().split('T')[0]);
+                            }}>
+                                {selectedDate ? 'No events for this date. Click to add one.' : 'No upcoming events.'}
                             </div>
                         )}
                     </div>
