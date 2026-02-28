@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     ChevronRight,
@@ -8,15 +8,24 @@ import {
     Layers
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useStore } from '../store/StoreContext';
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
+    const { session, isReady } = useStore();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+
+    // Auto-redirect logged-in users to the app dashboard
+    useEffect(() => {
+        if (isReady && session) {
+            navigate('/app');
+        }
+    }, [isReady, session, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

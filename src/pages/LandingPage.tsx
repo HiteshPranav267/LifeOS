@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useStore } from '../store/StoreContext';
 import {
     ArrowRight,
     CheckCircle2,
@@ -13,7 +14,15 @@ import {
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
+    const { session, isReady } = useStore();
     const currentYear = new Date().getFullYear();
+
+    // Auto-redirect logged-in users to the app dashboard
+    useEffect(() => {
+        if (isReady && session) {
+            navigate('/app');
+        }
+    }, [isReady, session, navigate]);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white selection:bg-white selection:text-black flex flex-col items-center" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
