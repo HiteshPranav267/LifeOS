@@ -1,166 +1,98 @@
 import { useStore } from '../store/StoreContext.tsx';
-import { CheckSquare, Calendar, Activity, Zap, Wallet, ArrowUpRight, Pencil, Trash2 } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { CheckCircle2, Calendar, Activity, Wallet, Brain, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const DashboardPage = () => {
-    const { store, setTasks, setEvents } = useStore();
+    const { store } = useStore();
     const navigate = useNavigate();
 
-    const today = new Date().toISOString().split('T')[0];
-    const activeTasks = store.tasks.filter(t => t.status !== 'completed');
-    const todayTasks = activeTasks.filter(t => t.deadline === today);
-    const upcomingTasks = activeTasks.filter(t => t.deadline >= today).sort((a, b) => a.deadline.localeCompare(b.deadline)).slice(0, 5);
+    // Data Aggregates
+    const activeTasksCount = store.tasks.filter(t => t.status !== 'completed').length;
+    const balance = store.transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+    const upcomingEvents = store.events.filter(e => new Date(e.date) >= new Date()).length;
 
-    const todayEvents = store.events.filter(e => e.date === today);
-    const upcomingEvents = store.events.filter(e => e.date >= today).sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start)).slice(0, 3);
+    // Recent Items
+    const activeHabits = store.habits.slice(0, 3);
+    const recentDumps = store.brainDumps.slice(0, 3);
 
-    const totalHabits = store.habits.length;
-    const completedHabitsToday = store.habits.filter(h => h.completions.includes(today)).length;
-    const habitPercentage = totalHabits > 0 ? (completedHabitsToday / totalHabits) * 100 : 0;
-
-    const totalBalance = store.transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
-
-    const getAIInsight = () => {
-        if (activeTasks.length > 8) return "High volume of open intentions. Focus on your top 3 'High' priority items today.";
-        if (habitPercentage < 30 && totalHabits > 0) return "Consistency yields momentum. Pick one ritual to complete now.";
-        if (todayEvents.length > 3) return "Temporal density is high. Ensure buffer periods between records.";
-        return "The system is in homeostasis. Your current distribution looks sustainable.";
-    };
-
-    const deleteEvent = (id: string, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (confirm('Delete this chronicle record?')) {
-            setEvents(store.events.filter(ev => ev.id !== id));
-        }
-    };
-
-    const deleteTask = (id: string, e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (confirm('Delete this intention record?')) {
-            setTasks(store.tasks.filter(t => t.id !== id));
-        }
-    };
+    const cards = [
+        { name: 'Commitments', value: `${activeTasksCount} Active`, icon: CheckCircle2, color: 'text-blue-500', path: '/tasks', desc: 'Focus on what matters.' },
+        { name: 'Chronicle', value: `${upcomingEvents} Upcoming`, icon: Calendar, color: 'text-purple-500', path: '/calendar', desc: 'Schedule of intent.' },
+        { name: 'Capital', value: `₹${balance.toLocaleString('en-IN')}`, icon: Wallet, color: 'text-green-500', path: '/money', desc: 'Financial health.' },
+        { name: 'Thought', value: `${store.brainDumps.length} Captured`, icon: Brain, color: 'text-orange-500', path: '/brain-dump', desc: 'Stream of mind.' },
+    ];
 
     return (
-        <div className="flex flex-col gap-10">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="card shadow-sm border-none bg-neutral-900 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <CheckSquare size={64} />
-                    </div>
-                    <span className="section-label lowercase tracking-widest opacity-60">Open Intentions</span>
-                    <p className="serif text-4xl mt-2 tracking-tight">{activeTasks.length}</p>
-                </div>
+        <div className="flex flex-col gap-14 max-w-2xl mx-auto">
+            <div className="flex flex-col gap-2">
+                <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-neutral-600">Overview</span>
+                <h1 className="serif mt-2">Welcome to your <span className="opacity-50">sanctuary.</span></h1>
+            </div>
 
-                <div className="card shadow-sm border-none bg-neutral-900 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Calendar size={64} />
+            {/* Launchpad Grid */}
+            <div className="grid grid-cols-2 gap-4">
+                {cards.map(card => (
+                    <div
+                        key={card.path}
+                        onClick={() => navigate(card.path)}
+                        className="card interactive-card p-6 flex flex-col gap-8 justify-between group"
+                    >
+                        <div className="flex items-center justify-between">
+                            <div className={`w-12 h-12 rounded-2xl bg-neutral-900 flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                <card.icon className={card.color} size={24} />
+                            </div>
+                            <ArrowRight size={16} className="text-neutral-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <div>
+                            <span className="text-xs font-semibold text-neutral-500 block mb-1 uppercase tracking-wider">{card.name}</span>
+                            <p className="text-xl font-semibold leading-tight">{card.value}</p>
+                        </div>
                     </div>
-                    <span className="section-label lowercase tracking-widest opacity-60">Daily Records</span>
-                    <p className="serif text-4xl mt-2 tracking-tight">{todayEvents.length}</p>
-                </div>
+                ))}
+            </div>
 
-                <div className="card shadow-sm border-none bg-neutral-900 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Activity size={64} />
-                    </div>
-                    <span className="section-label lowercase tracking-widest opacity-60">Ritual Yield</span>
-                    <p className="serif text-4xl mt-2 tracking-tight">{Math.round(habitPercentage)}%</p>
+            {/* Rituals Quick View */}
+            <div>
+                <div className="flex items-center justify-between mb-6">
+                    <span className="section-label m-0">Daily Rituals</span>
+                    <button onClick={() => navigate('/habits')} className="text-[10px] uppercase font-bold text-neutral-600 hover:text-white transition-colors">See All</button>
                 </div>
-
-                <div className="card shadow-sm border-none bg-neutral-900 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Wallet size={64} />
-                    </div>
-                    <span className="section-label lowercase tracking-widest opacity-60">Liquid Capital</span>
-                    <p className={`serif text-3xl mt-2 tracking-tight ${totalBalance >= 0 ? 'text-white' : 'text-red-400'}`}>
-                        ₹{totalBalance.toLocaleString('en-IN')}
-                    </p>
+                <div className="flex flex-col gap-3">
+                    {activeHabits.map(habit => (
+                        <div key={habit.id} className="card p-5 py-4 flex items-center justify-between interactive-card" onClick={() => navigate('/habits')}>
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-full border border-neutral-900 flex items-center justify-center text-blue-500">
+                                    <Activity size={18} />
+                                </div>
+                                <span className="text-sm font-medium">{habit.title}</span>
+                            </div>
+                            <div className="flex gap-1.5">
+                                {[1, 2, 3, 4, 5].map(i => (
+                                    <div key={i} className="w-2.5 h-2.5 rounded-full bg-neutral-900" />
+                                ))}
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                <div className="lg:col-span-2 flex flex-col gap-10">
-                    {/* Active Intents */}
-                    <section>
-                        <div className="flex items-center justify-between border-b border-neutral-800 pb-4 mb-6">
-                            <span className="section-label lowercase tracking-widest m-0 opacity-60">Immediate Intentions</span>
-                            <NavLink to="/tasks" className="text-[10px] uppercase font-bold tracking-widest hover:text-white transition-colors flex items-center gap-1">
-                                Expand Chronicle <ArrowUpRight size={10} />
-                            </NavLink>
-                        </div>
-                        <div className="flex flex-col gap-3">
-                            {(todayTasks.length > 0 ? todayTasks : upcomingTasks).length > 0 ? (
-                                (todayTasks.length > 0 ? todayTasks : upcomingTasks).map(task => (
-                                    <div key={task.id} className="group flex items-center justify-between py-4 px-6 rounded-2xl bg-neutral-900/50 border border-neutral-800 hover:border-neutral-700 transition-all">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-1 h-1 rounded-full ${task.priority === 'high' ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'bg-neutral-600'}`} />
-                                            <span className="text-sm font-light tracking-wide">{task.title}</span>
-                                        </div>
-                                        <div className="flex items-center gap-4 opacity-30 group-hover:opacity-100 transition-all">
-                                            <button onClick={() => navigate('/tasks')} className="hover:text-white transition-colors">
-                                                <Pencil size={12} strokeWidth={2} />
-                                            </button>
-                                            <button onClick={(e) => deleteTask(task.id, e)} className="hover:text-white transition-colors">
-                                                <Trash2 size={14} strokeWidth={2} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="serif italic text-neutral-500 text-xl py-6 opacity-40">The task chronicle is awaiting records.</p>
-                            )}
-                        </div>
-                    </section>
-
-                    {/* Records List */}
-                    <section>
-                        <div className="flex items-center justify-between border-b border-neutral-800 pb-4 mb-6">
-                            <span className="section-label lowercase tracking-widest m-0 opacity-60">Temporal Records</span>
-                            <NavLink to="/calendar" className="text-[10px] uppercase font-bold tracking-widest hover:text-white transition-colors flex items-center gap-1">
-                                Expand Timeline <ArrowUpRight size={10} />
-                            </NavLink>
-                        </div>
-                        <div className="flex flex-col gap-3">
-                            {(todayEvents.length > 0 ? todayEvents : upcomingEvents).length > 0 ? (
-                                (todayEvents.length > 0 ? todayEvents : upcomingEvents).map(event => (
-                                    <div key={event.id} className="group flex items-center justify-between py-4 px-6 rounded-2xl bg-neutral-900/50 border border-neutral-800">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-sm font-light">{event.title}</span>
-                                            {event.date !== today && <span className="text-[9px] uppercase tracking-widest opacity-40">{event.date}</span>}
-                                        </div>
-                                        <div className="flex items-center gap-4 opacity-30 group-hover:opacity-100 transition-all">
-                                            <span className="text-xs font-bold font-mono opacity-60 mr-2">{event.start} — {event.end}</span>
-                                            <button onClick={() => navigate('/calendar')} className="hover:text-white transition-colors">
-                                                <Pencil size={12} strokeWidth={2} />
-                                            </button>
-                                            <button onClick={(e) => deleteEvent(event.id, e)} className="hover:text-white transition-colors">
-                                                <Trash2 size={14} strokeWidth={2} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="serif italic text-neutral-500 text-xl py-6 opacity-40">No records found on the horizon.</p>
-                            )}
-                        </div>
-                    </section>
+            {/* Recent Thoughts */}
+            <div>
+                <div className="flex items-center justify-between mb-6">
+                    <span className="section-label m-0">Recent Stream</span>
+                    <button onClick={() => navigate('/brain-dump')} className="text-[10px] uppercase font-bold text-neutral-600 hover:text-white transition-colors">Capture</button>
                 </div>
-
-                {/* AI Insight */}
-                <div>
-                    <div className="card bg-neutral-900 border-none shadow-xl sticky top-24" style={{ borderStyle: 'dashed', borderWidth: '1px', borderColor: 'var(--border)' }}>
-                        <div className="flex items-center gap-3 border-b border-neutral-800 pb-4 mb-6">
-                            <Zap size={16} strokeWidth={2.5} className="text-white" />
-                            <span className="section-label lowercase tracking-widest m-0 opacity-60">Cognitive Synthesis</span>
+                <div className="grid gap-4">
+                    {recentDumps.map(dump => (
+                        <div key={dump.id} className="card p-6 py-5 border-l-4 border-l-orange-500/50 interactive-card" onClick={() => navigate('/brain-dump')}>
+                            <p className="text-sm text-neutral-400 line-clamp-2 leading-relaxed">
+                                {dump.content}
+                            </p>
+                            <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-600 mt-4 block">
+                                {new Date(dump.createdAt).toLocaleDateString()}
+                            </span>
                         </div>
-                        <p className="serif italic text-neutral-300 text-lg leading-relaxed lowercase">
-                            "{getAIInsight()}"
-                        </p>
-                    </div>
+                    ))}
                 </div>
             </div>
         </div>

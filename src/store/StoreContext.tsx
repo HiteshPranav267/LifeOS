@@ -87,7 +87,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setStore(initialData);
             setIsReady(true);
         };
-        boot();
+
+        // Fail-safe: Ensure we always boot within 2 seconds
+        const safetyTimeout = setTimeout(() => {
+            setIsReady(true);
+        }, 2000);
+
+        boot().finally(() => clearTimeout(safetyTimeout));
     }, []);
 
     // Global Persistence Engine

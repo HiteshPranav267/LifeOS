@@ -12,7 +12,7 @@ createRoot(document.getElementById('root')!).render(
 // Register Service Worker for Offline iPhone App usage
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
+    navigator.serviceWorker.register('/sw.js').then(() => {
       console.log('[LifeOS] Chronicle Cache initialized.');
     }).catch(err => {
       console.warn('[LifeOS] Offline mode inhibited:', err);

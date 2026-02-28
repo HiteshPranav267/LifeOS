@@ -1,158 +1,159 @@
 import { useState } from 'react';
 import { useStore } from '../store/StoreContext.tsx';
-import { Plus, Check, TrendingUp, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Activity, Trash2, Pencil, Zap } from 'lucide-react';
 import type { Habit } from '../types';
 
 const HabitsPage = () => {
     const { store, setHabits } = useStore();
     const [isAdding, setIsAdding] = useState(false);
     const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-    const [habitFormName, setHabitFormName] = useState('');
+    const [title, setTitle] = useState('');
+    const [frequency, setFrequency] = useState('daily');
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const currentDate = new Date();
-    const totalDays = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-    const days = Array.from({ length: totalDays }, (_, i) => i + 1);
-
-    const toggleHabit = (id: string, date: string) => {
-        setHabits(store.habits.map(h => {
-            if (h.id !== id) return h;
-            const completions = h.completions.includes(date)
-                ? h.completions.filter(c => c !== date)
-                : [...h.completions, date];
-            return { ...h, completions } as Habit;
-        }));
-    };
-
-    const handleSaveHabit = () => {
-        if (!habitFormName.trim()) return;
+    const handleSave = () => {
+        if (!title.trim()) return;
 
         if (editingHabit) {
-            setHabits(store.habits.map(h => (h.id === editingHabit.id ? { ...h, name: habitFormName } : h)));
+            const updated = store.habits.map(h =>
+                h.id === editingHabit.id ? { ...h, title, frequency } : h
+            );
+            setHabits(updated);
         } else {
-            if (store.habits.length >= 8) { alert("Maximum ritual capacity reached."); return; }
-            setHabits([...store.habits, { id: crypto.randomUUID(), name: habitFormName, completions: [] }]);
+            const newHabit: Habit = {
+                id: crypto.randomUUID(),
+                title,
+                frequency,
+                streak: 0,
+                completedDays: [],
+            };
+            setHabits([...store.habits, newHabit]);
         }
         closeModal();
     };
 
-    const closeModal = () => {
-        setIsAdding(false);
-        setEditingHabit(null);
-        setHabitFormName('');
-    };
-
-    const openEdit = (habit: Habit) => {
-        setEditingHabit(habit);
-        setHabitFormName(habit.name);
-        setIsAdding(true);
+    const toggleDay = (habitId: string) => {
+        const today = new Date().toISOString().split('T')[0];
+        setHabits(store.habits.map(h => {
+            if (h.id === habitId) {
+                const completed = h.completedDays.includes(today)
+                    ? h.completedDays.filter(d => d !== today)
+                    : [...h.completedDays, today];
+                return { ...h, completedDays: completed, streak: completed.length };
+            }
+            return h;
+        }));
     };
 
     const deleteHabit = (id: string) => {
         setHabits(store.habits.filter(h => h.id !== id));
     };
 
+    const openEdit = (habit: Habit) => {
+        setEditingHabit(habit);
+        setTitle(habit.title);
+        setFrequency(habit.frequency);
+        setIsAdding(true);
+    };
+
+    const closeModal = () => {
+        setIsAdding(false);
+        setEditingHabit(null);
+        setTitle('');
+        setFrequency('daily');
+    };
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
     return (
-        <div className="flex flex-col gap-10">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-6">
-                <div className="flex flex-col">
-                    <span className="section-label">Rituals of Consistency</span>
-                    <span className="serif italic text-[var(--text-muted)]">
-                        {new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(currentDate)}
-                    </span>
+        <div className="flex flex-col gap-10 max-w-2xl mx-auto">
+            <div className="flex items-center justify-between">
+                <div>
+                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-neutral-600">Evolution</span>
+                    <h1 className="serif mt-2">Rituals.</h1>
                 </div>
-                <button className="btn-pill" onClick={() => setIsAdding(true)}>
-                    <Plus size={14} /> New Ritual
+                <button
+                    onClick={() => setIsAdding(true)}
+                    className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-90 transition-transform"
+                >
+                    <Plus size={24} />
                 </button>
             </div>
 
-            <div className="flex flex-col gap-12">
-                {store.habits.map(habit => {
-                    const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-                    const monthlyCompletions = habit.completions.filter(c => c.startsWith(currentMonth)).length;
-                    const completionRate = Math.round((monthlyCompletions / totalDays) * 100);
-
-                    return (
-                        <div key={habit.id} className="group flex flex-col gap-6">
-                            <div className="flex justify-between items-end">
-                                <div className="flex flex-col">
-                                    <div className="flex items-center gap-3">
-                                        <h2 className="serif text-3xl lowercase">{habit.name}</h2>
-                                        <div className="flex items-center gap-3 opacity-30 group-hover:opacity-100 transition-all duration-300">
-                                            <button onClick={() => openEdit(habit)} className="hover:text-white transform hover:scale-110 transition-transform">
-                                                <Pencil size={12} strokeWidth={2} />
-                                            </button>
-                                            <button onClick={() => deleteHabit(habit.id)} className="hover:text-white transform hover:scale-110 transition-transform">
-                                                <Trash2 size={14} strokeWidth={2} />
-                                            </button>
+            <section className="flex flex-col gap-8">
+                <div>
+                    <span className="section-label m-0 mb-6 opacity-40">Today's Sequence</span>
+                    <div className="flex flex-col gap-4">
+                        {store.habits.length > 0 ? store.habits.map(habit => {
+                            const completedToday = habit.completedDays.includes(todayStr);
+                            return (
+                                <div key={habit.id} className="card p-6 py-5 group flex items-center justify-between">
+                                    <div className="flex items-center gap-6 flex-1" onClick={() => toggleDay(habit.id)}>
+                                        <div className={`w-14 h-14 rounded-2xl border-2 transition-all flex items-center justify-center ${completedToday ? 'bg-blue-600 border-blue-600 shadow-lg' : 'bg-neutral-900 border-neutral-800 opacity-60'}`}>
+                                            <Activity size={24} className={completedToday ? 'text-white' : 'text-neutral-500'} />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className={`text-xl font-semibold leading-tight ${completedToday ? 'text-white' : 'text-neutral-300'}`}>{habit.title}</span>
+                                            <div className="flex items-center gap-4 mt-2">
+                                                <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 rounded-full">
+                                                    <Zap size={10} className="text-orange-500" />
+                                                    <span className="text-[10px] font-bold tracking-widest text-orange-500/80 uppercase">{habit.streak} Day Pulse</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2 mt-1 text-[var(--text-muted)] text-[10px] uppercase tracking-widest font-bold">
-                                        <TrendingUp size={12} />
-                                        <span>{habit.completions.length} cycles complete</span>
+                                    <div className="flex items-center gap-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => openEdit(habit)} className="p-2 hover:text-blue-500 transition-colors">
+                                            <Pencil size={20} />
+                                        </button>
+                                        <button onClick={() => deleteHabit(habit.id)} className="p-2 hover:text-red-500 transition-colors">
+                                            <Trash2 size={24} />
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="serif text-2xl lowercase">{completionRate}% yield</span>
-                                    <div className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{monthlyCompletions} / {totalDays} days</div>
+                            )
+                        }) : (
+                            <div className="p-20 text-center opacity-30 italic serif text-xl lowercase border-2 border-dashed border-neutral-800 rounded-3xl">
+                                No rituals established.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            {isAdding && (
+                <div className="modal-overlay">
+                    <div className="modal-card">
+                        <h3 className="text-2xl font-semibold mb-8">Establish Ritual.</h3>
+                        <div className="flex flex-col gap-8">
+                            <input
+                                placeholder="What is the daily ritual?"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="bg-neutral-900 border-none rounded-2xl p-6"
+                                autoFocus
+                            />
+
+                            <div className="flex flex-col gap-4">
+                                <span className="section-label m-0 text-center">Frequency of Execution</span>
+                                <div className="flex gap-4">
+                                    {['daily', 'weekly', 'growth'].map(f => (
+                                        <button
+                                            key={f}
+                                            onClick={() => setFrequency(f)}
+                                            className={`flex-1 py-4 rounded-xl text-[10px] uppercase font-bold tracking-widest border-2 transition-all ${frequency === f ? 'bg-white text-black border-white' : 'bg-neutral-900 border-transparent opacity-60'}`}
+                                        >
+                                            {f}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
-                            {/* Grid */}
-                            <div className="grid grid-cols-[repeat(auto-fill,minmax(28px,1fr))] gap-1.5">
-                                {days.map(day => {
-                                    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                    const isCompleted = habit.completions.includes(dateStr);
-                                    const isToday = dateStr === todayStr;
-                                    return (
-                                        <button
-                                            key={day}
-                                            onClick={() => toggleHabit(habit.id, dateStr)}
-                                            className={`aspect-square rounded-md flex items-center justify-center text-[10px] transition-all border
-                        ${isCompleted ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]' : 'bg-transparent border-[var(--border)] hover:border-[var(--text-muted)]'}
-                        ${isToday ? 'ring-2 ring-[var(--text-primary)] ring-offset-2 ring-offset-[var(--bg-primary)]' : ''}
-                      `}
-                                        >
-                                            {isCompleted ? <Check size={12} strokeWidth={3} /> : <span className="opacity-30">{day}</span>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Progress bar */}
-                            <div className="w-full h-1 bg-[var(--border)] rounded-full overflow-hidden">
-                                <div className="h-full bg-[var(--text-primary)] rounded-full transition-all duration-700" style={{ width: `${completionRate}%` }} />
-                            </div>
-                        </div>
-                    );
-                })}
-                {store.habits.length === 0 && (
-                    <div className="text-center py-20 border border-dashed border-[var(--border)] rounded-2xl">
-                        <p className="serif italic text-[var(--text-muted)] text-xl opacity-60">No rituals established in this chronicle.</p>
-                    </div>
-                )}
-            </div>
-
-            {/* Modal */}
-            {isAdding && (
-                <div className="modal-overlay">
-                    <div className="modal-card text-center">
-                        <h3 className="serif text-2xl">{editingHabit ? 'Refine Ritual' : 'Establish Ritual'}</h3>
-                        <div className="mt-8 flex flex-col gap-8">
-                            <div className="flex flex-col gap-1">
-                                <span className="section-label">Label</span>
-                                <input
-                                    placeholder="e.g. Deep Reading"
-                                    value={habitFormName}
-                                    onChange={(e) => setHabitFormName(e.target.value)}
-                                    autoFocus
-                                    className="text-center serif text-2xl! border-none p-0 focus:ring-0 active:ring-0 bg-transparent underline decoration-dotted decoration-[var(--border)]"
-                                />
-                            </div>
-                            <div className="flex justify-center gap-6">
-                                <button className="btn-ghost lowercase" onClick={closeModal}>Stow Away</button>
-                                <button className="btn-pill px-10!" onClick={handleSaveHabit}>
-                                    {editingHabit ? 'Keep Ritual' : 'Initiate Ritual'}
+                            <div className="flex gap-4 pt-4 border-t border-neutral-900">
+                                <button className="btn-pill flex-1 bg-white text-black text-lg" onClick={handleSave}>
+                                    Save Ritual
+                                </button>
+                                <button className="btn-pill bg-neutral-800 text-white" onClick={closeModal}>
+                                    Cancel
                                 </button>
                             </div>
                         </div>

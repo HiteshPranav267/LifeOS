@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../store/StoreContext.tsx';
-import { Plus, ArrowUpRight, ArrowDownLeft, Trash2, Pencil } from 'lucide-react';
+import { Plus, ArrowUpRight, ArrowDownLeft, Trash2, Wallet } from 'lucide-react';
 import type { Transaction } from '../types';
 
 const MoneyPage = () => {
@@ -11,17 +11,9 @@ const MoneyPage = () => {
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
 
-    const totalBalance = store.transactions.reduce((acc, t) => {
-        return t.type === 'income' ? acc + t.amount : acc - t.amount;
-    }, 0);
-
-    const totalIncome = store.transactions
-        .filter(t => t.type === 'income')
-        .reduce((acc, t) => acc + t.amount, 0);
-
-    const totalExpense = store.transactions
-        .filter(t => t.type === 'expense')
-        .reduce((acc, t) => acc + t.amount, 0);
+    const totalBalance = store.transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+    const totalIncome = store.transactions.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const totalExpense = store.transactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
 
     const handleSave = () => {
         const numAmount = parseFloat(amount);
@@ -70,144 +62,128 @@ const MoneyPage = () => {
     );
 
     return (
-        <div className="flex flex-col gap-10">
-            {/* Balance Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="card text-center py-10 flex flex-col items-center justify-center border-none bg-[var(--bg-secondary)] shadow-sm">
-                    <span className="section-label lowercase tracking-widest opacity-60">Available Capital</span>
-                    <p className="serif mt-4 text-5xl font-light tracking-tight" style={{
-                        color: totalBalance >= 0 ? 'var(--text-primary)' : '#ef4444'
-                    }}>
-                        ₹{totalBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </p>
+        <div className="flex flex-col gap-10 max-w-2xl mx-auto">
+            <div className="flex items-center justify-between">
+                <div>
+                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-neutral-600">Treasury</span>
+                    <h1 className="serif mt-2">Capital.</h1>
                 </div>
-
-                <div className="card py-8 border-none bg-green-500/5 group">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <ArrowDownLeft size={18} className="text-green-500" />
-                        </div>
-                        <span className="section-label lowercase tracking-widest opacity-60" style={{ marginBottom: 0 }}>Inflow</span>
-                    </div>
-                    <p className="serif text-2xl font-medium tracking-tight text-green-500/80">
-                        +₹{totalIncome.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </p>
-                </div>
-
-                <div className="card py-8 border-none bg-red-500/5 group">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <ArrowUpRight size={18} className="text-red-500" />
-                        </div>
-                        <span className="section-label lowercase tracking-widest opacity-60" style={{ marginBottom: 0 }}>Outflow</span>
-                    </div>
-                    <p className="serif text-2xl font-medium tracking-tight text-red-500/80">
-                        -₹{totalExpense.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                    </p>
-                </div>
-            </div>
-
-            {/* Controls */}
-            <div className="flex justify-center -mt-4">
-                <button className="btn-pill px-10!" onClick={() => setIsAdding(true)}>
-                    <Plus size={16} /> Record Transaction
+                <button
+                    onClick={() => setIsAdding(true)}
+                    className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-90 transition-transform"
+                >
+                    <Plus size={24} />
                 </button>
             </div>
 
-            {/* History */}
+            {/* Premium Balance Card */}
+            <div className="card p-10 bg-white text-black flex flex-col items-center justify-center gap-4 relative overflow-hidden shadow-2xl">
+                <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <Wallet size={120} />
+                </div>
+                <span className="text-[11px] uppercase tracking-[0.3em] font-bold opacity-40">Available Balance</span>
+                <p className="text-5xl font-semibold tracking-tighter">
+                    ₹{totalBalance.toLocaleString('en-IN')}
+                </p>
+                <div className="flex gap-4 mt-4">
+                    <div className="flex items-center gap-1.5 px-4 py-2 bg-black/5 rounded-full">
+                        <ArrowDownLeft size={12} className="text-green-600" />
+                        <span className="text-[11px] font-bold tracking-widest">+₹{totalIncome.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-4 py-2 bg-black/5 rounded-full">
+                        <ArrowUpRight size={12} className="text-red-600" />
+                        <span className="text-[11px] font-bold tracking-widest">-₹{totalExpense.toLocaleString('en-IN')}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Transaction History */}
             <section>
-                <span className="section-label">Archive of Transactions</span>
-                <div className="flex flex-col mt-6 rounded-2xl overflow-hidden border border-[var(--border)] shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                    <span className="section-label m-0 opacity-40">Archive</span>
+                    <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">{store.transactions.length} Total Records</span>
+                </div>
+                <div className="flex flex-col gap-3">
                     {sortedTx.length > 0 ? sortedTx.map((tx) => (
-                        <div
-                            key={tx.id}
-                            className="flex items-center justify-between px-8 py-5 group hover:bg-[var(--bg-tertiary)] transition-all bg-[var(--bg-secondary)]"
-                            style={{ borderBottom: '1px solid var(--border)' }}
-                        >
-                            <div className="flex items-center gap-6">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${tx.type === 'income' ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                                    {tx.type === 'income'
-                                        ? <ArrowDownLeft size={18} className="text-green-500" />
-                                        : <ArrowUpRight size={18} className="text-red-500" />
-                                    }
+                        <div key={tx.id} className="card p-5 py-4 flex items-center justify-between group">
+                            <div className="flex items-center gap-6" onClick={() => openEdit(tx)}>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${tx.type === 'income' ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                    {tx.type === 'income' ? <ArrowDownLeft size={20} className="text-green-500" /> : <ArrowUpRight size={20} className="text-red-500" />}
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="font-semibold text-gray-200">{tx.reason}</span>
-                                    <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold mt-1">
-                                        {new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(tx.date))}
+                                    <span className="text-base font-semibold">{tx.reason}</span>
+                                    <span className="text-[10px] text-neutral-600 uppercase tracking-widest font-bold mt-1">
+                                        {new Date(tx.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                                     </span>
                                 </div>
                             </div>
                             <div className="flex items-center gap-8">
-                                <span className={`serif font-normal text-xl ${tx.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
+                                <span className={`text-lg font-semibold ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                                     {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
                                 </span>
-                                <div className="flex items-center gap-4 opacity-30 group-hover:opacity-100 transition-all duration-300">
-                                    <button onClick={() => openEdit(tx)} className="hover:text-white transform hover:scale-110 transition-transform">
-                                        <Pencil size={12} strokeWidth={2} />
-                                    </button>
-                                    <button onClick={() => deleteTx(tx.id)} className="hover:text-white transform hover:scale-110 transition-transform">
-                                        <Trash2 size={14} strokeWidth={2} />
+                                <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => deleteTx(tx.id)} className="p-2 hover:text-red-500">
+                                        <Trash2 size={18} />
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )) : (
-                        <div className="text-center py-24 bg-[var(--bg-secondary)] opacity-40">
-                            <p className="serif italic text-2xl">Ledger is empty.</p>
+                        <div className="p-20 text-center opacity-30 italic serif text-xl lowercase border-2 border-dashed border-neutral-800 rounded-3xl">
+                            The ledger is empty.
                         </div>
                     )}
                 </div>
             </section>
 
-            {/* Modal */}
             {isAdding && (
                 <div className="modal-overlay">
                     <div className="modal-card">
-                        <h3>{editingTx ? 'Refine Transaction' : 'Record Transaction'}</h3>
+                        <h3 className="text-2xl font-semibold mb-8">Record Transaction.</h3>
                         <div className="flex flex-col gap-8">
                             {/* Type Toggle */}
-                            <div className="flex rounded-full overflow-hidden border border-[var(--border)] p-1 bg-[var(--bg-tertiary)]">
+                            <div className="flex gap-4">
                                 <button
                                     onClick={() => setTxType('expense')}
-                                    className={`flex-1 py-3 text-[10px] uppercase tracking-widest font-bold transition-all rounded-full ${txType === 'expense' ? 'bg-red-500/20 text-red-400 shadow-sm' : 'text-[var(--text-muted)]'}`}
+                                    className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${txType === 'expense' ? 'bg-red-500/5 border-red-500/20 text-red-500' : 'bg-neutral-900 border-transparent opacity-60'}`}
                                 >
-                                    Outflow
+                                    <ArrowUpRight size={20} />
+                                    <span className="text-[10px] uppercase font-bold tracking-widest">Expense</span>
                                 </button>
                                 <button
                                     onClick={() => setTxType('income')}
-                                    className={`flex-1 py-3 text-[10px] uppercase tracking-widest font-bold transition-all rounded-full ${txType === 'income' ? 'bg-green-500/20 text-green-400 shadow-sm' : 'text-[var(--text-muted)]'}`}
+                                    className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${txType === 'income' ? 'bg-green-500/5 border-green-500/20 text-green-500' : 'bg-neutral-900 border-transparent opacity-60'}`}
                                 >
-                                    Inflow
+                                    <ArrowDownLeft size={20} />
+                                    <span className="text-[10px] uppercase font-bold tracking-widest">Income</span>
                                 </button>
                             </div>
 
                             <div className="flex flex-col gap-1">
-                                <span className="section-label">Amount (₹)</span>
+                                <span className="text-[10px] uppercase tracking-widest font-bold opacity-30 mb-2">Amount (₹)</span>
                                 <input
                                     type="number"
                                     placeholder="0.00"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
-                                    className="serif text-center text-5xl! border-none p-0 focus:ring-0 active:ring-0 placeholder:opacity-20 bg-transparent underline decoration-dotted decoration-[var(--border)]"
+                                    className="text-center text-4xl! font-semibold bg-transparent border-none p-0 h-auto"
                                     autoFocus
                                 />
                             </div>
 
-                            <div className="flex flex-col gap-1">
-                                <span className="section-label">Label / Occasion</span>
-                                <input
-                                    placeholder="Describe the transaction..."
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    className="text-center p-0 border-none italic placeholder:opacity-40"
-                                />
-                            </div>
+                            <input
+                                placeholder="Describe the occasion..."
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value)}
+                                className="bg-neutral-900 border-none rounded-2xl"
+                            />
 
-                            <div className="flex justify-end gap-6 pt-4 border-t border-[var(--border)]">
-                                <button className="btn-ghost lowercase" onClick={closeModal}>Stow Ledger</button>
-                                <button className="btn-pill" onClick={handleSave}>
-                                    {editingTx ? 'Archive Changes' : 'Record Transaction'}
+                            <div className="flex gap-4 pt-4 border-t border-neutral-900">
+                                <button className="btn-pill flex-1 bg-white text-black text-lg" onClick={handleSave}>
+                                    {editingTx ? 'Confirm Edit' : 'Add Record'}
+                                </button>
+                                <button className="btn-pill bg-neutral-800 text-white" onClick={closeModal}>
+                                    Cancel
                                 </button>
                             </div>
                         </div>

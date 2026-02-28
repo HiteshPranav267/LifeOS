@@ -1,46 +1,37 @@
 export interface Task {
     id: string;
     title: string;
-    category: Category;
-    priority: Priority;
-    status: 'todo' | 'completed';
-    effort: EffortSize;
-    deadline: string;
+    category: string;
+    priority: 'low' | 'medium' | 'high';
+    status: 'pending' | 'completed' | 'todo'; // Allow all for compatibility
     createdAt: string;
 }
-
-export type Category = 'Work' | 'Personal' | 'Health' | 'Finance' | 'Other';
-export type Priority = 'low' | 'medium' | 'high';
-export type EffortSize = 'S' | 'M' | 'L' | 'XL';
 
 export interface Event {
     id: string;
     title: string;
     date: string;
-    start: string;
-    end: string;
-    category: Category;
+    time: string;
+    type: 'event' | 'task' | 'milestone';
+    createdAt: string;
 }
 
 export interface Habit {
     id: string;
-    name: string;
-    completions: string[]; // dates in YYYY-MM-DD
+    title: string;
+    frequency: string;
+    streak: number;
+    completedDays: string[]; // YYYY-MM-DD
 }
 
 export interface BrainDump {
     id: string;
     content: string;
     createdAt: string;
-    type?: 'task' | 'idea' | 'concern' | 'reflection';
 }
 
 export interface WeeklyFocus {
     id: string;
-    weekStart: string;
-    focus: string;
-    objectives: { id: string; text: string; completed: boolean }[];
-    // Compatibility with current implementation
     weekId?: string;
     focusTasks?: string[];
 }
@@ -55,8 +46,8 @@ export interface Transaction {
 
 export interface Settings {
     theme: 'light' | 'dark';
-    supabaseUrl?: string; // For Private Cloud Sync
-    supabaseKey?: string; // For Private Cloud Sync
+    supabaseUrl?: string;
+    supabaseKey?: string;
 }
 
 export interface Store {
