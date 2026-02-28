@@ -9,6 +9,7 @@ import {
   Moon,
   Sun,
   Layers,
+  Gift,
 } from 'lucide-react';
 
 import DashboardPage from './pages/DashboardPage';
@@ -21,6 +22,7 @@ import SettingsPage from './pages/SettingsPage';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import NotFoundPage from './pages/NotFoundPage';
+import BirthdaysPage from './pages/BirthdaysPage';
 
 import { StoreProvider, useStore } from './store/StoreContext.tsx';
 
@@ -31,6 +33,7 @@ const BottomNav = () => {
     { name: 'Calendar', path: '/app/calendar', icon: Calendar },
     { name: 'Money', path: '/app/money', icon: Wallet },
     { name: 'Brain', path: '/app/brain-dump', icon: Brain },
+    { name: 'Birthdays', path: '/app/birthdays', icon: Gift },
   ];
 
   return (
@@ -129,6 +132,7 @@ function App() {
                 <Route path="/money" element={<MoneyPage />} />
                 <Route path="/brain-dump" element={<BrainDumpPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/birthdays" element={<BirthdaysPage />} />
                 <Route path="*" element={<DashboardPage />} />
               </Routes>
             </AppLayout>

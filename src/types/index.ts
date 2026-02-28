@@ -50,6 +50,12 @@ export interface Settings {
     supabaseKey?: string;
 }
 
+export interface Birthday {
+    id: string;
+    person: string;
+    date: string; // YYYY-MM-DD
+}
+
 export interface Store {
     tasks: Task[];
     events: Event[];
@@ -58,4 +64,5 @@ export interface Store {
     weeklyFocus: WeeklyFocus[];
     transactions: Transaction[];
     settings: Settings;
+    birthdays: Birthday[];
 }

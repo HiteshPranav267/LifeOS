@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { Store, Task, Event, Habit, BrainDump, WeeklyFocus, Transaction } from '../types';
+import type { Store, Task, Event, Habit, BrainDump, WeeklyFocus, Transaction, Birthday } from '../types';
 import { supabase, SYNC_TABLE } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
@@ -10,6 +10,7 @@ const DEFAULT_STORE: Store = {
     brainDumps: [],
     weeklyFocus: [],
     transactions: [],
+    birthdays: [],
     settings: {
         theme: 'dark',
     },
@@ -25,6 +26,7 @@ const getLocalStore = (userId?: string): Store => {
         const parsed = JSON.parse(data);
         // Data Migration
         if (!parsed.transactions) parsed.transactions = [];
+        if (!parsed.birthdays) parsed.birthdays = [];
         if (!parsed.weeklyFocus) parsed.weeklyFocus = [];
         if (!parsed.brainDumps) parsed.brainDumps = [];
         if (!parsed.habits) parsed.habits = [];
@@ -57,6 +59,7 @@ interface StoreContextType {
     setBrainDumps: (brainDumps: BrainDump[]) => void;
     setWeeklyFocus: (weeklyFocus: WeeklyFocus[]) => void;
     setTransactions: (transactions: Transaction[]) => void;
+    setBirthdays: (birthdays: Birthday[]) => void;
     setTheme: (theme: 'light' | 'dark') => void;
     forceCloudPull: () => Promise<void>;
     signOut: () => Promise<void>;
@@ -114,6 +117,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
                     if (data && data.data) {
                         initialData = data.data as Store;
+                        // Defensive hydration for newly added fields on older cloud saves
+                        if (!initialData.transactions) initialData.transactions = [];
+                        if (!initialData.birthdays) initialData.birthdays = [];
+                        if (!initialData.weeklyFocus) initialData.weeklyFocus = [];
+                        if (!initialData.brainDumps) initialData.brainDumps = [];
+                        if (!initialData.habits) initialData.habits = [];
+                        if (!initialData.events) initialData.events = [];
+                        if (!initialData.tasks) initialData.tasks = [];
+
                         setIsCloudSynced(true);
                         console.log('[LifeOS] Cloud data loaded for user:', userId);
                     } else if (!error || error.code === 'PGRST116') {
@@ -205,11 +217,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const setBrainDumps = (brainDumps: BrainDump[]) => setStore(prev => ({ ...prev, brainDumps }));
     const setWeeklyFocus = (weeklyFocus: WeeklyFocus[]) => setStore(prev => ({ ...prev, weeklyFocus }));
     const setTransactions = (transactions: Transaction[]) => setStore(prev => ({ ...prev, transactions }));
+    const setBirthdays = (birthdays: Birthday[]) => setStore(prev => ({ ...prev, birthdays }));
     const setTheme = (theme: 'light' | 'dark') => setStore(prev => ({ ...prev, settings: { ...prev.settings, theme } }));
 
     return (
         <StoreContext.Provider value={{
-            store, session, isSaving, isCloudSynced, isReady, setTasks, setEvents, setHabits, setBrainDumps, setWeeklyFocus, setTransactions, setTheme, forceCloudPull, signOut
+            store, session, isSaving, isCloudSynced, isReady, setTasks, setEvents, setHabits, setBrainDumps, setWeeklyFocus, setTransactions, setBirthdays, setTheme, forceCloudPull, signOut
         }}>
             {children}
         </StoreContext.Provider>
