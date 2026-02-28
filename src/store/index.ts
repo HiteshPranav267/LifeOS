@@ -38,8 +38,8 @@ export const syncToCloud = async (store: Store) => {
     if (!supabaseUrl || !supabaseKey) return;
 
     try {
-        // Simple UPSERT via Supabase REST API (No libraries needed!)
-        const res = await fetch(`${supabaseUrl}/rest/v1/lifeos_sync`, {
+        // High-Performance UPSERT (on_conflict=id)
+        const res = await fetch(`${supabaseUrl}/rest/v1/lifeos_sync?on_conflict=id`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -48,7 +48,7 @@ export const syncToCloud = async (store: Store) => {
                 'Prefer': 'resolution=merge-duplicates'
             },
             body: JSON.stringify({
-                id: 'default_user', // For simplicity, single user mode
+                id: 'default_user',
                 data: store,
                 updated_at: new Date().toISOString()
             })

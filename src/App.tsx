@@ -104,6 +104,24 @@ const TopBar = () => {
 };
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
+  const { isReady } = useStore();
+
+  if (!isReady) {
+    return (
+      <div className="fixed inset-0 bg-black flex flex-col items-center justify-center z-[9999]">
+        <div className="relative">
+          <div className="w-16 h-16 rounded-full border-t-2 border-white animate-spin opacity-20" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <img src="/logo.png" alt="" className="w-6 h-6 invert opacity-80" />
+          </div>
+        </div>
+        <span className="mt-8 text-[10px] uppercase tracking-[0.4em] font-bold text-neutral-500 animate-pulse">
+          Hydrating your chronicle...
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="app-wrapper">
       <TopBar />

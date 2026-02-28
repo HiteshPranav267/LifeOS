@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { Store, Task, Event, Habit, BrainDump, WeeklyFocus, Transaction, Settings } from '../types';
+import type { Store, Task, Event, Habit, BrainDump, WeeklyFocus, Transaction } from '../types';
 import { getStore, saveStore, syncToCloud, loadFromCloud } from './index';
 
 interface StoreContextType {
     store: Store;
     isSaving: boolean;
     isCloudSynced: boolean;
+    isReady: boolean;
     setTasks: (tasks: Task[]) => void;
     setEvents: (events: Event[]) => void;
     setHabits: (habits: Habit[]) => void;
@@ -25,6 +26,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isCloudSynced, setIsCloudSynced] = useState(false);
     const [isReady, setIsReady] = useState(false);
     const isInitialMount = useRef(true);
+
+    // Theme Synchronization
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', store.settings.theme);
+    }, [store.settings.theme]);
 
     // Initial Load Protocol: Cloud -> Disk -> Local
     useEffect(() => {
@@ -47,10 +53,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             // 1. Attempt Cloud Pull if configured
             if (initialData.settings.supabaseUrl && initialData.settings.supabaseKey) {
                 const cloudData = await loadFromCloud(initialData.settings.supabaseUrl, initialData.settings.supabaseKey);
-                if (cloudData) {
+
+                // Safety logic:
+                const localHasData = (initialData.tasks?.length || initialData.transactions?.length || initialData.habits?.length);
+                const cloudHasData = cloudData && (cloudData.tasks?.length || cloudData.transactions?.length || cloudData.habits?.length);
+
+                if (cloudHasData) {
                     initialData = cloudData;
                     setIsCloudSynced(true);
                     console.log('[LifeOS] | Sync Complete | Global Cloud Data Hydrated.');
+                } else if (localHasData) {
+                    // Local has data but cloud is empty - Push local to cloud immediately
+                    console.log('[LifeOS] | Cloud Empty | Initializing cloud with local baseline...');
+                    await syncToCloud(initialData);
+                    setIsCloudSynced(true);
+                } else if (cloudData) {
+                    setIsCloudSynced(true);
                 }
             } else {
                 // 2. Attempt Local Disk Pull (Vite mock API)
@@ -60,7 +78,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         const diskData = await res.json();
                         if (diskData && diskData.settings) {
                             initialData = diskData;
-                            console.log('[LifeOS] | Booted from Laptop Project Folder Folder.');
+                            console.log('[LifeOS] | Booted from Laptop Project Folder.');
                         }
                     }
                 } catch (e) { /* silent fail for disk sync */ }
@@ -89,7 +107,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 setIsCloudSynced(true);
             }
             setIsSaving(false);
-        }, 1200); // Debounce to prevent server pressure
+        }, 400); // Tighter debounce for responsive feel
 
         return () => clearTimeout(timer);
     }, [store, isReady]);
@@ -115,7 +133,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return (
         <StoreContext.Provider value={{
-            store, isSaving, isCloudSynced, setTasks, setEvents, setHabits, setBrainDumps, setWeeklyFocus, setTransactions, setTheme, setSupabaseConfig, forceCloudPull
+            store, isSaving, isCloudSynced, isReady, setTasks, setEvents, setHabits, setBrainDumps, setWeeklyFocus, setTransactions, setTheme, setSupabaseConfig, forceCloudPull
         }}>
             {children}
         </StoreContext.Provider>
