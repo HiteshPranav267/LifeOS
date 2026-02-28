@@ -68,12 +68,12 @@ const HabitsPage = () => {
         <div className="flex flex-col gap-10 max-w-2xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-neutral-600">Evolution</span>
-                    <h1 className="serif mt-2">Rituals.</h1>
+                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-[var(--text-secondary)]">Evolution</span>
+                    <h1 className="text-3xl font-bold mt-2">Habits.</h1>
                 </div>
                 <button
                     onClick={() => setIsAdding(true)}
-                    className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-90 transition-transform"
+                    className="w-14 h-14 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center shadow-lg active:scale-90 transition-transform"
                 >
                     <Plus size={24} />
                 </button>
@@ -88,13 +88,13 @@ const HabitsPage = () => {
                             return (
                                 <div key={habit.id} className="card p-6 py-5 group flex items-center justify-between">
                                     <div className="flex items-center gap-6 flex-1" onClick={() => toggleDay(habit.id)}>
-                                        <div className={`w-14 h-14 rounded-2xl border-2 transition-all flex items-center justify-center ${completedToday ? 'bg-blue-600 border-blue-600 shadow-lg' : 'bg-neutral-900 border-neutral-800 opacity-60'}`}>
+                                        <div className={`w-14 h-14 rounded-2xl border-2 transition-all flex items-center justify-center ${completedToday ? 'bg-blue-600 border-blue-600 shadow-lg' : 'bg-[var(--bg-elevated)] border-[var(--border)] opacity-60'}`}>
                                             <Activity size={24} className={completedToday ? 'text-white' : 'text-neutral-500'} />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className={`text-xl font-semibold leading-tight ${completedToday ? 'text-white' : 'text-neutral-300'}`}>{habit.title}</span>
                                             <div className="flex items-center gap-4 mt-2">
-                                                <div className="flex items-center gap-1.5 px-3 py-1 bg-neutral-900 rounded-full">
+                                                <div className="flex items-center gap-1.5 px-3 py-1 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-full">
                                                     <Zap size={10} className="text-orange-500" />
                                                     <span className="text-[10px] font-bold tracking-widest text-orange-500/80 uppercase">{habit.streak} Day Pulse</span>
                                                 </div>
@@ -112,7 +112,7 @@ const HabitsPage = () => {
                                 </div>
                             )
                         }) : (
-                            <div className="p-20 text-center opacity-30 italic serif text-xl lowercase border-2 border-dashed border-neutral-800 rounded-3xl">
+                            <div className="p-16 text-center text-[var(--text-secondary)] italic text-lg border-2 border-dashed border-[var(--border)] rounded-3xl">
                                 No rituals established.
                             </div>
                         )}
@@ -129,7 +129,7 @@ const HabitsPage = () => {
                                 placeholder="What is the daily ritual?"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="bg-neutral-900 border-none rounded-2xl p-6"
+                                className="p-4"
                                 autoFocus
                             />
 
@@ -140,7 +140,7 @@ const HabitsPage = () => {
                                         <button
                                             key={f}
                                             onClick={() => setFrequency(f)}
-                                            className={`flex-1 py-4 rounded-xl text-[10px] uppercase font-bold tracking-widest border-2 transition-all ${frequency === f ? 'bg-white text-black border-white' : 'bg-neutral-900 border-transparent opacity-60'}`}
+                                            className={`flex-1 py-4 rounded-xl text-[10px] uppercase font-bold tracking-widest border-2 transition-all ${frequency === f ? 'bg-[var(--text-primary)] text-[var(--bg-primary)] border-[var(--text-primary)]' : 'bg-[var(--bg-elevated)] border-[var(--border)] opacity-60'}`}
                                         >
                                             {f}
                                         </button>
@@ -148,11 +148,11 @@ const HabitsPage = () => {
                                 </div>
                             </div>
 
-                            <div className="flex gap-4 pt-4 border-t border-neutral-900">
-                                <button className="btn-pill flex-1 bg-white text-black text-lg" onClick={handleSave}>
-                                    Save Ritual
+                            <div className="flex gap-3 pt-4 border-t border-[var(--border)]">
+                                <button className="flex-1 h-12 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-xl font-semibold active:scale-95 transition-transform" onClick={handleSave}>
+                                    Save Habit
                                 </button>
-                                <button className="btn-pill bg-neutral-800 text-white" onClick={closeModal}>
+                                <button className="h-12 px-6 bg-[var(--bg-elevated)] rounded-xl font-semibold active:scale-95 transition-transform" onClick={closeModal}>
                                     Cancel
                                 </button>
                             </div>

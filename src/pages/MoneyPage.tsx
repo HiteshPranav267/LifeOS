@@ -65,94 +65,93 @@ const MoneyPage = () => {
         <div className="flex flex-col gap-10 max-w-2xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-neutral-600">Treasury</span>
-                    <h1 className="serif mt-2">Capital.</h1>
+                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-[var(--text-secondary)]">Treasury</span>
+                    <h1 className="text-3xl font-bold mt-2">Capital.</h1>
                 </div>
                 <button
                     onClick={() => setIsAdding(true)}
-                    className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-90 transition-transform"
+                    className="w-14 h-14 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center shadow-lg active:scale-90 transition-transform"
                 >
                     <Plus size={24} />
                 </button>
             </div>
 
-            {/* Premium Balance Card */}
-            <div className="card p-10 bg-white text-black flex flex-col items-center justify-center gap-4 relative overflow-hidden shadow-2xl">
+            {/* Balance Card */}
+            <div className="card p-8 bg-[var(--bg-elevated)] border border-[var(--border)] flex flex-col items-center justify-center gap-4 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-5">
-                    <Wallet size={120} />
+                    <Wallet size={100} />
                 </div>
-                <span className="text-[11px] uppercase tracking-[0.3em] font-bold opacity-40">Available Balance</span>
+                <span className="text-[11px] uppercase tracking-[0.3em] font-bold text-[var(--text-secondary)]">Available Balance</span>
                 <p className="text-5xl font-semibold tracking-tighter">
                     ₹{totalBalance.toLocaleString('en-IN')}
                 </p>
                 <div className="flex gap-4 mt-4">
-                    <div className="flex items-center gap-1.5 px-4 py-2 bg-black/5 rounded-full">
-                        <ArrowDownLeft size={12} className="text-green-600" />
-                        <span className="text-[11px] font-bold tracking-widest">+₹{totalIncome.toLocaleString('en-IN')}</span>
+                    <div className="flex items-center gap-1.5 px-4 py-2.5 bg-green-500/10 border border-green-500/20 rounded-full">
+                        <ArrowDownLeft size={12} className="text-green-500" />
+                        <span className="text-[11px] font-bold tracking-widest text-green-500">+₹{totalIncome.toLocaleString('en-IN')}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 px-4 py-2 bg-black/5 rounded-full">
-                        <ArrowUpRight size={12} className="text-red-600" />
-                        <span className="text-[11px] font-bold tracking-widest">-₹{totalExpense.toLocaleString('en-IN')}</span>
+                    <div className="flex items-center gap-1.5 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-full">
+                        <ArrowUpRight size={12} className="text-red-500" />
+                        <span className="text-[11px] font-bold tracking-widest text-red-500">-₹{totalExpense.toLocaleString('en-IN')}</span>
                     </div>
                 </div>
             </div>
 
-            {/* Transaction History */}
+            {/* Transactions */}
             <section>
-                <div className="flex items-center justify-between mb-8">
-                    <span className="section-label m-0 opacity-40">Archive</span>
-                    <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-widest">{store.transactions.length} Total Records</span>
+                <div className="flex items-center justify-between mb-6">
+                    <span className="section-label !mb-0">History</span>
+                    <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">{store.transactions.length} records</span>
                 </div>
                 <div className="flex flex-col gap-3">
                     {sortedTx.length > 0 ? sortedTx.map((tx) => (
-                        <div key={tx.id} className="card p-5 py-4 flex items-center justify-between group">
-                            <div className="flex items-center gap-6" onClick={() => openEdit(tx)}>
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${tx.type === 'income' ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                                    {tx.type === 'income' ? <ArrowDownLeft size={20} className="text-green-500" /> : <ArrowUpRight size={20} className="text-red-500" />}
+                        <div key={tx.id} className="card flex items-center justify-between group">
+                            <div className="flex items-center gap-5 cursor-pointer" onClick={() => openEdit(tx)}>
+                                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${tx.type === 'income' ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
+                                    {tx.type === 'income' ? <ArrowDownLeft size={18} className="text-green-500" /> : <ArrowUpRight size={18} className="text-red-500" />}
                                 </div>
                                 <div className="flex flex-col">
-                                    <span className="text-base font-semibold">{tx.reason}</span>
-                                    <span className="text-[10px] text-neutral-600 uppercase tracking-widest font-bold mt-1">
+                                    <span className="text-sm font-semibold">{tx.reason}</span>
+                                    <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-widest font-bold mt-0.5">
                                         {new Date(tx.date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                                     </span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-8">
-                                <span className={`text-lg font-semibold ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                            <div className="flex items-center gap-6">
+                                <span className={`text-base font-semibold ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
                                     {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN')}
                                 </span>
-                                <div className="flex items-center gap-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => deleteTx(tx.id)} className="p-2 hover:text-red-500">
-                                        <Trash2 size={18} />
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button onClick={() => deleteTx(tx.id)} className="p-2 hover:text-red-500 transition-colors">
+                                        <Trash2 size={16} />
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )) : (
-                        <div className="p-20 text-center opacity-30 italic serif text-xl lowercase border-2 border-dashed border-neutral-800 rounded-3xl">
-                            The ledger is empty.
+                        <div className="p-16 text-center text-[var(--text-secondary)] italic text-lg border-2 border-dashed border-[var(--border)] rounded-3xl">
+                            No transactions yet.
                         </div>
                     )}
                 </div>
             </section>
 
             {isAdding && (
-                <div className="modal-overlay">
-                    <div className="modal-card">
-                        <h3 className="text-2xl font-semibold mb-8">Record Transaction.</h3>
-                        <div className="flex flex-col gap-8">
-                            {/* Type Toggle */}
-                            <div className="flex gap-4">
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className="modal-card" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-semibold mb-6">Record Transaction</h3>
+                        <div className="flex flex-col gap-5">
+                            <div className="flex gap-3">
                                 <button
                                     onClick={() => setTxType('expense')}
-                                    className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${txType === 'expense' ? 'bg-red-500/5 border-red-500/20 text-red-500' : 'bg-neutral-900 border-transparent opacity-60'}`}
+                                    className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${txType === 'expense' ? 'bg-red-500/10 border-red-500/30 text-red-500' : 'bg-[var(--bg-elevated)] border-transparent text-[var(--text-secondary)]'}`}
                                 >
                                     <ArrowUpRight size={20} />
                                     <span className="text-[10px] uppercase font-bold tracking-widest">Expense</span>
                                 </button>
                                 <button
                                     onClick={() => setTxType('income')}
-                                    className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${txType === 'income' ? 'bg-green-500/5 border-green-500/20 text-green-500' : 'bg-neutral-900 border-transparent opacity-60'}`}
+                                    className={`flex-1 py-4 rounded-2xl flex flex-col items-center gap-2 border-2 transition-all ${txType === 'income' ? 'bg-green-500/10 border-green-500/30 text-green-500' : 'bg-[var(--bg-elevated)] border-transparent text-[var(--text-secondary)]'}`}
                                 >
                                     <ArrowDownLeft size={20} />
                                     <span className="text-[10px] uppercase font-bold tracking-widest">Income</span>
@@ -160,29 +159,28 @@ const MoneyPage = () => {
                             </div>
 
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] uppercase tracking-widest font-bold opacity-30 mb-2">Amount (₹)</span>
+                                <span className="text-xs text-[var(--text-secondary)] font-medium px-1">Amount (₹)</span>
                                 <input
                                     type="number"
                                     placeholder="0.00"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
-                                    className="text-center text-4xl! font-semibold bg-transparent border-none p-0 h-auto"
+                                    className="text-center text-3xl! font-semibold"
                                     autoFocus
                                 />
                             </div>
 
                             <input
-                                placeholder="Describe the occasion..."
+                                placeholder="What's this for?"
                                 value={reason}
                                 onChange={(e) => setReason(e.target.value)}
-                                className="bg-neutral-900 border-none rounded-2xl"
                             />
 
-                            <div className="flex gap-4 pt-4 border-t border-neutral-900">
-                                <button className="btn-pill flex-1 bg-white text-black text-lg" onClick={handleSave}>
-                                    {editingTx ? 'Confirm Edit' : 'Add Record'}
+                            <div className="flex gap-3 pt-2">
+                                <button className="flex-1 h-12 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-xl font-semibold active:scale-95 transition-transform" onClick={handleSave}>
+                                    {editingTx ? 'Update' : 'Add'}
                                 </button>
-                                <button className="btn-pill bg-neutral-800 text-white" onClick={closeModal}>
+                                <button className="h-12 px-6 bg-[var(--bg-elevated)] rounded-xl font-semibold active:scale-95 transition-transform" onClick={closeModal}>
                                     Cancel
                                 </button>
                             </div>

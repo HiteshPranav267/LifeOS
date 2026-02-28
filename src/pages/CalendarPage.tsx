@@ -63,7 +63,6 @@ const CalendarPage = () => {
         const numDays = daysInMonth(currentMonth);
         const startDay = firstDayOfMonth(currentMonth);
 
-        // Padding
         for (let i = 0; i < (startDay === 0 ? 6 : startDay - 1); i++) {
             days.push(<div key={`empty-${i}`} className="h-14 opacity-5" />);
         }
@@ -75,7 +74,7 @@ const CalendarPage = () => {
 
             days.push(
                 <div key={d} className="h-14 flex flex-col items-center justify-center relative group">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isToday ? 'bg-white text-black' : 'hover:bg-neutral-800'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isToday ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]' : 'hover:bg-[var(--bg-elevated)]'}`}>
                         <span className="text-xs font-semibold">{d}</span>
                     </div>
                     {hasEvent && <div className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-500" />}
@@ -94,36 +93,36 @@ const CalendarPage = () => {
         <div className="flex flex-col gap-10 max-w-2xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-neutral-600">Chronicle</span>
-                    <h1 className="serif mt-2">Timeline.</h1>
+                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-[var(--text-secondary)]">Chronicle</span>
+                    <h1 className="text-3xl font-bold mt-2">Timeline.</h1>
                 </div>
                 <button
                     onClick={() => setIsAdding(true)}
-                    className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-90 transition-transform"
+                    className="w-14 h-14 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center shadow-lg active:scale-90 transition-transform"
                 >
                     <Plus size={24} />
                 </button>
             </div>
 
             <section className="flex flex-col gap-10">
-                {/* Visual Grid */}
-                <div className="card p-8 bg-neutral-900/10 border-none shadow-sm">
+                {/* Calendar Grid */}
+                <div className="card">
                     <div className="flex items-center justify-between mb-8">
-                        <span className="text-lg font-semibold capitalize serif">
+                        <span className="text-lg font-semibold capitalize">
                             {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
                         </span>
                         <div className="flex gap-2">
-                            <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 hover:bg-neutral-800 rounded-full">
+                            <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() - 1)))} className="p-2 hover:bg-[var(--bg-elevated)] rounded-full transition-colors">
                                 <ChevronLeft size={20} />
                             </button>
-                            <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-2 hover:bg-neutral-800 rounded-full">
+                            <button onClick={() => setCurrentMonth(new Date(currentMonth.setMonth(currentMonth.getMonth() + 1)))} className="p-2 hover:bg-[var(--bg-elevated)] rounded-full transition-colors">
                                 <ChevronRight size={20} />
                             </button>
                         </div>
                     </div>
                     <div className="grid grid-cols-7 gap-y-2 mb-4">
-                        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(d => (
-                            <div key={d} className="text-center text-[10px] font-bold text-neutral-700 uppercase tracking-widest">{d}</div>
+                        {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                            <div key={`${d}-${i}`} className="text-center text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">{d}</div>
                         ))}
                     </div>
                     <div className="grid grid-cols-7 gap-y-4">
@@ -131,34 +130,34 @@ const CalendarPage = () => {
                     </div>
                 </div>
 
-                {/* Vertical Timeline (iPhone Style) */}
+                {/* Upcoming Events */}
                 <div>
-                    <span className="section-label m-0 mb-8 opacity-40 uppercase tracking-widest">Horizon List</span>
+                    <span className="section-label">Upcoming</span>
                     <div className="flex flex-col gap-4">
                         {upcoming.length > 0 ? upcoming.map(e => (
-                            <div key={e.id} className="card p-6 py-5 group flex items-center justify-between interactive-card" onClick={() => openEdit(e)}>
+                            <div key={e.id} className="card flex items-center justify-between group interactive-card" onClick={() => openEdit(e)}>
                                 <div className="flex items-center gap-6">
-                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-neutral-900 rounded-2xl border border-neutral-800">
-                                        <span className="text-[10px] uppercase font-bold text-neutral-600 leading-none mb-1">{new Date(e.date).toLocaleString('default', { month: 'short' })}</span>
+                                    <div className="flex flex-col items-center justify-center w-12 h-12 bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border)]">
+                                        <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] leading-none mb-1">{new Date(e.date).toLocaleString('default', { month: 'short' })}</span>
                                         <span className="text-lg font-bold leading-none">{new Date(e.date).getDate()}</span>
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-base font-semibold">{e.title}</span>
                                         <div className="flex items-center gap-1.5 mt-1">
-                                            <Clock size={10} className="text-neutral-600" />
-                                            <span className="text-[10px] text-neutral-600 uppercase tracking-wider font-bold">{e.time}</span>
+                                            <Clock size={10} className="text-[var(--text-secondary)]" />
+                                            <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider font-bold">{e.time}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={(e_original) => { e_original.stopPropagation(); deleteEvent(e.id); }} className="p-2 hover:text-red-500">
+                                    <button onClick={(ev) => { ev.stopPropagation(); deleteEvent(e.id); }} className="p-2 hover:text-red-500 transition-colors">
                                         <Trash2 size={20} />
                                     </button>
                                 </div>
                             </div>
                         )) : (
-                            <div className="p-20 text-center opacity-30 italic serif text-xl lowercase border-2 border-dashed border-neutral-800 rounded-3xl">
-                                The horizon is clear. No events discovered.
+                            <div className="p-16 text-center text-[var(--text-secondary)] italic text-lg border-2 border-dashed border-[var(--border)] rounded-3xl">
+                                No upcoming events.
                             </div>
                         )}
                     </div>
@@ -166,44 +165,31 @@ const CalendarPage = () => {
             </section>
 
             {isAdding && (
-                <div className="modal-overlay">
-                    <div className="modal-card">
-                        <h3 className="text-2xl font-semibold mb-8">Plot Event.</h3>
-                        <div className="flex flex-col gap-6">
+                <div className="modal-overlay" onClick={closeModal}>
+                    <div className="modal-card" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-xl font-semibold mb-6">Add Event</h3>
+                        <div className="flex flex-col gap-4">
                             <input
-                                placeholder="What is the occasion?"
+                                placeholder="Event name"
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="bg-neutral-900 border-none rounded-2xl p-6"
                                 autoFocus
                             />
-
                             <div className="flex gap-4">
                                 <div className="flex-1 flex flex-col gap-1.5">
-                                    <span className="text-[10px] px-4 uppercase font-bold tracking-widest opacity-40">Date</span>
-                                    <input
-                                        type="date"
-                                        value={date}
-                                        onChange={(e) => setDate(e.target.value)}
-                                        className="bg-neutral-900 border-none rounded-2xl p-6 mb-0!"
-                                    />
+                                    <span className="text-xs text-[var(--text-secondary)] font-medium px-1">Date</span>
+                                    <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
                                 </div>
                                 <div className="flex-1 flex flex-col gap-1.5">
-                                    <span className="text-[10px] px-4 uppercase font-bold tracking-widest opacity-40">Time</span>
-                                    <input
-                                        type="time"
-                                        value={time}
-                                        onChange={(e) => setTime(e.target.value)}
-                                        className="bg-neutral-900 border-none rounded-2xl p-6 mb-0!"
-                                    />
+                                    <span className="text-xs text-[var(--text-secondary)] font-medium px-1">Time</span>
+                                    <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
                                 </div>
                             </div>
-
-                            <div className="flex gap-4 pt-4 border-t border-neutral-900">
-                                <button className="btn-pill flex-1 bg-white text-black text-lg" onClick={handleSave}>
-                                    Save to Chronicle
+                            <div className="flex gap-3 pt-4">
+                                <button className="flex-1 h-12 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-xl font-semibold active:scale-95 transition-transform" onClick={handleSave}>
+                                    Save
                                 </button>
-                                <button className="btn-pill bg-neutral-800 text-white" onClick={closeModal}>
+                                <button className="h-12 px-6 bg-[var(--bg-elevated)] rounded-xl font-semibold active:scale-95 transition-transform" onClick={closeModal}>
                                     Cancel
                                 </button>
                             </div>

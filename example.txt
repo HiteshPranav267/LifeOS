@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LifeOS — Get your life back into control</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            primary: '#1132d4',
+            surface: '#f9fafb',
+            'border-light': '#e5e7eb',
+          },
+          boxShadow: {
+            'custom': '0 6px 24px rgba(0,0,0,0.06)',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-animations">
+    .hover-lift {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hover-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+    }
+    .sticky-header {
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+  </style>
+</head>
+<body class="bg-white text-gray-900 font-sans antialiased">
+<!-- BEGIN: MainHeader -->
+<header class="fixed top-0 left-0 right-0 z-50 bg-white/90 sticky-header h-16 flex items-center">
+<div class="container mx-auto px-6 flex justify-between items-center">
+<div class="flex items-center gap-8">
+<a class="text-xl font-bold tracking-tight text-gray-900 flex items-center gap-2" href="#">
+<img alt="LifeOS Logo" class="w-6 h-6 object-contain hidden" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC98aFfUP-jcTBOl0UA0vdUaoo5cFwYSbnj6C6_V1Zlcugal45JR3kvddX-ykJoLTmpalQHk85TonOPqlAXcPhamlKUmSf1Vy62Vx1VGzPSEP9XSos15lWI4WIDHNrKwutt0U5jBVjEn5m6uaBnfG7zRjw_ZbUCXHfipCrSVlzDiYWk7LpLUNyV1MvX5HMW_D8UqNnuOeN0BwMrPuS4sSBhW-pn6LyLtBi59kn9iwwbnA_QtmoOPmkvIR0bf648fSIWIo6U2EJAIh4"/>
+<!-- Fallback simple SVG logo like the triangle in the screenshot -->
+<svg fill="black" height="24" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 4L4 20H20L12 4Z"></path>
+</svg>
+<span>LifeOS</span>
+</a>
+<nav class="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
+<a class="hover:text-primary transition-colors" href="#features">Features</a>
+<a class="hover:text-primary transition-colors" href="#how-it-works">How it works</a>
+<a class="hover:text-primary transition-colors" href="#pricing">Pricing</a>
+</nav>
+</div>
+<div>
+<button class="bg-black text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-gray-800 transition-all">
+          Get Started
+        </button>
+</div>
+</div>
+</header>
+<!-- END: MainHeader -->
+<main class="pt-16">
+<!-- BEGIN: HeroSection -->
+<section class="container mx-auto px-6 py-20 lg:py-32 flex flex-col lg:flex-row items-center gap-12">
+<div class="lg:w-1/2 space-y-8">
+<h1 class="text-5xl lg:text-7xl font-bold tracking-tight text-gray-900 leading-[1.1]">
+          Get your life back <br class="hidden lg:block"/> into control?
+        </h1>
+<p class="text-xl text-gray-500 max-w-lg leading-relaxed">
+          Plan your day, form better habits, and track progress — all in one lightweight workspace.
+        </p>
+<div class="flex flex-col sm:flex-row gap-4 pt-4">
+<!-- Google Auth Placeholder -->
+<button class="flex items-center justify-center gap-3 bg-white border border-border-light px-6 py-3 rounded-full font-medium hover-lift shadow-sm">
+<svg class="w-5 h-5" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+</svg>
+            Continue with Google
+          </button>
+<button class="flex items-center justify-center bg-gray-50 border border-transparent text-gray-700 px-6 py-3 rounded-full font-medium hover:bg-gray-100 transition-colors">
+            Sign in with Email
+          </button>
+</div>
+<p class="text-xs text-gray-400 font-medium">
+          Free to start • Secure sign-in • Works on mobile &amp; desktop
+        </p>
+</div>
+<!-- Hero Image / Mockup -->
+<div class="lg:w-1/2 w-full">
+<div class="bg-gray-50 rounded-2xl p-4 shadow-custom border border-gray-100">
+<img alt="LifeOS Dashboard" class="w-full h-auto rounded-xl shadow-sm border border-gray-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXlRxrJ0rQnjnphRhYfw4ZWWPiPhGxuGIUGIUfrsIzf0HbkOkNd3L-fr3zEOURtvy6uy0bakZl3U46N40Ml6AAhpnGGxvAr2a1Lab18VtIRaOQgXbCPNx9_08dIO77D1Vi9t91KcOO4kLU2jhxmY4enn1vm4o718uNWlzmSShGec0N2k0oQno07rw0NSliaKcu4ThJlh0xbLIlii9SUd60AU8OMIaniN1g4hBCn34mQJ4KYzZ3WZudDrwdeYR5O8IBFshgbWiqP3c"/>
+</div>
+</div>
+</section>
+<!-- END: HeroSection -->
+<!-- BEGIN: FeaturesOverview -->
+<section class="bg-gray-50 py-24" id="features">
+<div class="container mx-auto px-6">
+<div class="text-center mb-16">
+<h2 class="text-3xl font-bold tracking-tight">Everything you need to focus</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<!-- Feature Card 1 -->
+<div class="bg-white p-8 rounded-2xl border border-gray-100 hover-lift group" data-purpose="feature-card">
+<div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+<svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+</div>
+<h3 class="text-lg font-bold mb-2">Task planner</h3>
+<p class="text-gray-500 text-sm leading-relaxed">Prioritize your tasks with an intuitive drag-and-drop interface.</p>
+</div>
+<!-- Feature Card 2 -->
+<div class="bg-white p-8 rounded-2xl border border-gray-100 hover-lift group" data-purpose="feature-card">
+<div class="w-10 h-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center mb-6 group-hover:bg-green-600 group-hover:text-white transition-colors">
+<svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2v20"></path><path d="m17 12-5 5-5-5"></path><path d="m17 7-5 5-5-5"></path></svg>
+</div>
+<h3 class="text-lg font-bold mb-2">Habit tracker</h3>
+<p class="text-gray-500 text-sm leading-relaxed">Build consistent routines with visual streaks and reminders.</p>
+</div>
+<!-- Feature Card 3 -->
+<div class="bg-white p-8 rounded-2xl border border-gray-100 hover-lift group" data-purpose="feature-card">
+<div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center mb-6 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+<svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+</div>
+<h3 class="text-lg font-bold mb-2">Daily review</h3>
+<p class="text-gray-500 text-sm leading-relaxed">Reflect on your day and set intentions for tomorrow.</p>
+</div>
+<!-- Feature Card 4 -->
+<div class="bg-white p-8 rounded-2xl border border-gray-100 hover-lift group" data-purpose="feature-card">
+<div class="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center mb-6 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+<svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M3 3v18h18"></path><path d="m19 9-5 5-4-4-3 3"></path></svg>
+</div>
+<h3 class="text-lg font-bold mb-2">Analytics</h3>
+<p class="text-gray-500 text-sm leading-relaxed">Understand your time distribution with clean data visualizations.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- END: FeaturesOverview -->
+<!-- BEGIN: HowItWorks -->
+<section class="py-24 bg-white overflow-hidden" id="how-it-works">
+<div class="container mx-auto px-6">
+<div class="text-center mb-20">
+<h2 class="text-3xl font-bold tracking-tight mb-4">How it works</h2>
+<p class="text-gray-500">Transform your workflow in three simple steps.</p>
+</div>
+<div class="relative flex flex-col md:flex-row justify-between items-center gap-12 md:gap-0">
+<!-- Connection Line (Desktop) -->
+<div class="hidden md:block absolute top-1/2 left-0 w-full h-px bg-gray-100 -z-10"></div>
+<!-- Step 1 -->
+<div class="flex flex-col items-center text-center bg-white px-8">
+<div class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center text-lg font-bold mb-6 border-4 border-white">1</div>
+<h3 class="font-bold text-xl mb-2">Plan</h3>
+<p class="text-gray-500 text-sm max-w-[200px]">Map out your major goals and daily tasks.</p>
+</div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center text-center bg-white px-8">
+<div class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center text-lg font-bold mb-6 border-4 border-white">2</div>
+<h3 class="font-bold text-xl mb-2">Track</h3>
+<p class="text-gray-500 text-sm max-w-[200px]">Log progress and habits as you go through your day.</p>
+</div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center text-center bg-white px-8">
+<div class="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center text-lg font-bold mb-6 border-4 border-white">3</div>
+<h3 class="font-bold text-xl mb-2">Reflect</h3>
+<p class="text-gray-500 text-sm max-w-[200px]">Analyze your data to improve performance.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- END: HowItWorks -->
+<!-- BEGIN: AppShowcase -->
+<section class="bg-gray-50 py-24">
+<div class="container mx-auto px-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="rounded-2xl overflow-hidden shadow-custom border border-gray-100">
+<img alt="Showcase 1" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhHDn9CvB4GhOfXIrMFNy6n9Ys6XuxS4oSJHFS6oc6zAHhAIhxdFaecFEpqbyUvBghGY9nlZhYX_CvlP40JlGVUbFFuilgbgyT130-HQ9-kTn_m82PFKAIHBD2ACKnlrNkyATeMHdJ0fXKnIbPY-5a7xtyfv_lusk817XnYUgFGiMeyBi5jQECGb9sySlIsRh2UnoiVZLxnE4h-bvdlGP5I_gmLwOIbwXF2EPxaCIomHA3FcPdxdSmoQLGUbXCg90vhoyv525SGfI"/>
+</div>
+<div class="rounded-2xl overflow-hidden shadow-custom border border-gray-100">
+<img alt="Showcase 2" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4CoEHNE0mIy6HYRpk9nf_5rX1U9at3PF-tch0PMQeplXh8qaWAVZmaAbqBcsjZ-wEKj-DNE-pUTnLdvLr9oCGeJqKMyJZ6CRobxI6hYZ8b29M7rRrSW8IFFxxi9Atfrmlh-c_ixNwEWVeBrvdirkIEUl3l_NFuQJ_ltF5ZpzYnW1B1hYEM2qDEfkwQBREobd9op63dgnPFeCZrHJ3l208kPsysX5wJ2iCHsiODcW4ytUpmpQZ8c7_vJgIArdOO9NfTRZFLGF2LDk"/>
+</div>
+</div>
+</div>
+</section>
+<!-- END: AppShowcase -->
+<!-- BEGIN: LoginBlockMidPage -->
+<section class="py-24 border-t border-gray-100">
+<div class="container mx-auto px-6 max-w-lg">
+<div class="text-center mb-10">
+<h2 class="text-3xl font-bold tracking-tight mb-2">Get your life back into control?</h2>
+<p class="text-gray-500">Join thousands of users organizing their lives.</p>
+</div>
+<div class="bg-white border border-gray-100 rounded-2xl p-8 shadow-custom space-y-4" data-purpose="login-card">
+<button class="w-full flex items-center justify-center gap-3 bg-white border border-border-light py-3 rounded-full font-medium hover:bg-gray-50 transition-all">
+<svg class="w-5 h-5" viewbox="0 0 24 24">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+</svg>
+            Continue with Google
+          </button>
+<div class="relative flex items-center py-4">
+<div class="flex-grow border-t border-gray-100"></div>
+<span class="flex-shrink mx-4 text-xs text-gray-400 uppercase tracking-widest">or</span>
+<div class="flex-grow border-t border-gray-100"></div>
+</div>
+<div class="space-y-3">
+<input class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all" placeholder="Email Address" type="email"/>
+<button class="w-full bg-black text-white py-3 rounded-full font-medium hover:bg-gray-800 transition-all">
+              Continue
+            </button>
+</div>
+<p class="text-center text-sm text-gray-500 pt-4">
+            Don't have an account? <a class="text-primary hover:underline" href="#">Sign Up</a>
+</p>
+</div>
+</div>
+</section>
+<!-- END: LoginBlockMidPage -->
+</main>
+<!-- BEGIN: Footer -->
+<footer class="bg-white py-12 border-t border-gray-100">
+<div class="container mx-auto px-6">
+<div class="flex flex-col md:flex-row justify-between items-center gap-8">
+<div class="flex items-center gap-2 font-bold text-gray-900">
+<svg fill="black" height="20" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 4L4 20H20L12 4Z"></path>
+</svg>
+          LifeOS
+        </div>
+<nav class="flex gap-8 text-sm text-gray-400 font-medium">
+<a class="hover:text-gray-900" href="#">About</a>
+<a class="hover:text-gray-900" href="#">Privacy</a>
+<a class="hover:text-gray-900" href="#">Terms</a>
+<a class="hover:text-gray-900" href="#">Support</a>
+</nav>
+<div class="flex gap-4">
+<a class="text-gray-400 hover:text-gray-900" href="#">
+<svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"></path></svg>
+</a>
+<a class="text-gray-400 hover:text-gray-900" href="#">
+<svg class="w-5 h-5" fill="currentColor" viewbox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"></path></svg>
+</a>
+</div>
+</div>
+<div class="mt-12 text-center text-xs text-gray-400">
+        © 2024 LifeOS. Built for high achievers.
+      </div>
+</div>
+</footer>
+<!-- END: Footer -->
+</body></html>

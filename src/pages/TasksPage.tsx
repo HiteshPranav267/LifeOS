@@ -66,12 +66,12 @@ const TasksPage = () => {
         <div className="flex flex-col gap-10 max-w-2xl mx-auto">
             <div className="flex items-center justify-between">
                 <div>
-                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-neutral-600">Inventory</span>
-                    <h1 className="serif mt-2">Commitments.</h1>
+                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-[var(--text-secondary)]">Inventory</span>
+                    <h1 className="text-3xl font-bold mt-2">Tasks.</h1>
                 </div>
                 <button
                     onClick={() => setIsAdding(true)}
-                    className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-xl active:scale-90 transition-transform"
+                    className="w-14 h-14 rounded-full bg-[var(--text-primary)] text-[var(--bg-primary)] flex items-center justify-center shadow-lg active:scale-90 transition-transform"
                 >
                     <Plus size={24} />
                 </button>
@@ -85,8 +85,8 @@ const TasksPage = () => {
                             <div key={task.id} className="card p-5 py-4 flex flex-col gap-4 group">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4 flex-1" onClick={() => toggleStatus(task.id)}>
-                                        <div className="w-8 h-8 rounded-full border-2 border-neutral-800 flex items-center justify-center transition-colors group-hover:border-blue-500">
-                                            <Circle size={16} className="text-neutral-800" />
+                                        <div className="w-8 h-8 rounded-full border-2 border-[var(--border)] flex items-center justify-center transition-colors group-hover:border-blue-500">
+                                            <Circle size={16} className="text-[var(--text-secondary)]" />
                                         </div>
                                         <div className="flex flex-col">
                                             <span className="text-base font-medium leading-snug">{task.title}</span>
@@ -107,7 +107,7 @@ const TasksPage = () => {
                                 </div>
                             </div>
                         )) : (
-                            <div className="p-10 card bg-neutral-900/10 border-dashed text-center opacity-40">
+                            <div className="p-10 text-center text-[var(--text-secondary)] italic text-lg border-2 border-dashed border-[var(--border)] rounded-3xl">
                                 <p className="serif italic text-lg lowercase">The inventory is clean. Peace.</p>
                             </div>
                         )}
@@ -120,8 +120,8 @@ const TasksPage = () => {
                         <div className="flex flex-col gap-2">
                             {completedTasks.map(task => (
                                 <div key={task.id} className="flex items-center gap-4 px-6 py-4 opacity-30 line-through grayscale">
-                                    <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center">
-                                        <Check size={16} className="text-white" />
+                                    <div className="w-8 h-8 rounded-full bg-[var(--bg-elevated)] border border-[var(--border)] flex items-center justify-center">
+                                        <Check size={16} className="text-[var(--text-secondary)]" />
                                     </div>
                                     <span className="text-sm font-medium">{task.title}</span>
                                     <div className="flex-1" />
@@ -146,14 +146,14 @@ const TasksPage = () => {
                                     placeholder="What is the objective?"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="pl-14! mb-0! bg-neutral-900 border-none rounded-2xl"
+                                    className="pl-14! mb-0!"
                                     autoFocus
                                 />
                             </div>
 
                             <div className="flex gap-4">
                                 <select
-                                    className="flex-1 mb-0! bg-neutral-900 border-none rounded-2xl"
+                                    className="flex-1 mb-0!"
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
                                 >
@@ -163,7 +163,7 @@ const TasksPage = () => {
                                     <option value="Ritual">Ritual</option>
                                 </select>
                                 <select
-                                    className="flex-1 mb-0! bg-neutral-900 border-none rounded-2xl"
+                                    className="flex-1 mb-0!"
                                     value={priority}
                                     onChange={(e) => setPriority(e.target.value as any)}
                                 >
@@ -174,10 +174,10 @@ const TasksPage = () => {
                             </div>
 
                             <div className="flex gap-4 pt-4">
-                                <button className="btn-pill flex-1 bg-white text-black" onClick={handleSave}>
+                                <button className="flex-1 h-12 bg-[var(--text-primary)] text-[var(--bg-primary)] rounded-xl font-semibold active:scale-95 transition-transform" onClick={handleSave}>
                                     Save Task
                                 </button>
-                                <button className="btn-pill bg-neutral-800 text-white" onClick={closeModal}>
+                                <button className="h-12 px-6 bg-[var(--bg-elevated)] rounded-xl font-semibold active:scale-95 transition-transform" onClick={closeModal}>
                                     Cancel
                                 </button>
                             </div>
