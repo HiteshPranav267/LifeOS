@@ -98,7 +98,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
   // Redirect to landing if not logged in
   if (!session) {
-    return <LandingPage />;
+    return <Navigate to="/" replace />;
   }
 
   return (
