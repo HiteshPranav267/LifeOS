@@ -76,6 +76,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const isInitialMount = useRef(true);
     const currentUserId = useRef<string | undefined>(undefined);
     const lastCloudSyncStr = useRef<string>('');
+    const lastServerTime = useRef<number>(0);
 
     // 1. Auth & Session Management
     useEffect(() => {
@@ -112,7 +113,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 try {
                     const { data, error } = await supabase
                         .from(SYNC_TABLE)
-                        .select('data')
+                        .select('data, updated_at')
                         .eq('id', userId)
                         .single();
 
@@ -128,6 +129,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         if (!initialData.tasks) initialData.tasks = [];
 
                         setIsCloudSynced(true);
+                        lastServerTime.current = new Date((data as any).updated_at).getTime();
                         console.log('[LifeOS] Cloud data loaded for user:', userId);
                     } else if (!error || error.code === 'PGRST116') {
                         // No row yet — new user. Use defaults and push to cloud.
@@ -138,6 +140,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                             updated_at: new Date().toISOString()
                         });
                         setIsCloudSynced(true);
+                        lastServerTime.current = Date.now();
                     }
                 } catch (e) {
                     console.error('[LifeOS] Cloud pull error:', e);
@@ -189,7 +192,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     });
                     if (!error) {
                         setIsCloudSynced(true);
-                        lastCloudSyncStr.current = currentStoreStr; // Mark as saved so we don't re-upload
+                        // We update lastCloudSyncStr above (optimistically) but 
+                        // this is the confirmation that it actually reached the cloud.
                     }
                 } catch (e) {
                     console.warn('[LifeOS] Cloud sync delay');
@@ -197,6 +201,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             }
             setIsSaving(false);
         }, 800);
+
+        // Optimistically lock to prevent echoes while debouncing/saving
+        lastCloudSyncStr.current = currentStoreStr;
 
         return () => clearTimeout(timer);
     }, [store, isReady, session]);
@@ -220,6 +227,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 (payload) => {
                     if (payload.new && (payload.new as any).data) {
                         const newData = (payload.new as any).data as Store;
+                        const serverUpdatedAt = new Date((payload.new as any).updated_at).getTime();
+
                         // Defensive hydration
                         if (!newData.transactions) newData.transactions = [];
                         if (!newData.birthdays) newData.birthdays = [];
@@ -231,11 +240,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         if (!newData.settings) newData.settings = { theme: 'dark' };
 
                         const newStr = JSON.stringify(newData);
-                        // Only merge if it's strictly different from what we already sent to the cloud!
-                        // This prevents endless reflections (Save -> Receive -> Save -> Receive)
-                        if (newStr !== lastCloudSyncStr.current) {
-                            console.log('[LifeOS] Silent background sync from another device!');
-                            lastCloudSyncStr.current = newStr; // lock reflection
+
+                        // CRITICAL: Only apply if:
+                        // 1. Data is string-different from what we currently have
+                        // 2. AND the server timestamp is newer than our last known clean server sync
+                        if (newStr !== lastCloudSyncStr.current && serverUpdatedAt > lastServerTime.current) {
+                            console.log('[LifeOS] Cloud update received from server');
+                            lastCloudSyncStr.current = newStr;
+                            lastServerTime.current = serverUpdatedAt;
                             setStore(newData);
                             saveLocalStore(newData, userId);
                         }
@@ -253,11 +265,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (!session) return;
         const { data } = await supabase
             .from(SYNC_TABLE)
-            .select('data')
+            .select('data, updated_at')
             .eq('id', session.user.id)
             .single();
         if (data && data.data) {
-            setStore(data.data as Store);
+            const newData = data.data as Store;
+            const serverTime = new Date((data as any).updated_at).getTime();
+
+            lastCloudSyncStr.current = JSON.stringify(newData);
+            lastServerTime.current = serverTime;
+            setStore(newData);
             setIsCloudSynced(true);
         }
     };
