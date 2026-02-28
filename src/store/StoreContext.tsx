@@ -179,29 +179,33 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setIsSaving(true);
         const timer = setTimeout(async () => {
             const userId = currentUserId.current;
+            const storeToSave = store; // capture current state
+            const nowIso = new Date().toISOString();
 
             // Save to per-user localStorage
-            saveLocalStore(store, userId);
+            saveLocalStore(storeToSave, userId);
 
             // Sync to cloud if logged in
             if (session && userId) {
                 try {
                     const { error } = await supabase.from(SYNC_TABLE).upsert({
                         id: userId,
-                        data: store,
-                        updated_at: new Date().toISOString()
+                        data: storeToSave,
+                        updated_at: nowIso
                     });
                     if (!error) {
                         setIsCloudSynced(true);
-                        // Confirmation that our data is now the server's truth
-                        lastServerTime.current = Date.now();
+                        // Confirmation that our data reached the cloud
+                        lastServerTime.current = new Date(nowIso).getTime();
+                    } else {
+                        console.error('[LifeOS] Supabase Upsert Error:', error);
                     }
                 } catch (e) {
-                    console.warn('[LifeOS] Cloud sync delay');
+                    console.warn('[LifeOS] Cloud sync delay:', e);
                 }
             }
             setIsSaving(false);
-        }, 800);
+        }, 300); // Faster sync: 300ms debounce
 
         // Optimistically lock to prevent echoes while debouncing/saving
         lastCloudSyncStr.current = currentStoreStr;
@@ -242,19 +246,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
                         const newStr = JSON.stringify(newData);
 
-                        // CRITICAL: Only apply if:
-                        // 1. Data is string-different from what we currently have
-                        // 2. AND the server timestamp is newer than our last known clean server sync
-                        // 3. AND we haven't made a local edit very recently that the server might not have yet
+                        // Sync Verification Logic
+                        const isDifferent = newStr !== lastCloudSyncStr.current;
                         const isNewerThanLastSync = serverUpdatedAt > lastServerTime.current;
-                        const isNotConflictWithLocal = serverUpdatedAt > lastLocalMutation.current;
+                        const isNotConflictWithLocal = serverUpdatedAt > (lastLocalMutation.current + 500);
 
-                        if (newStr !== lastCloudSyncStr.current && isNewerThanLastSync && isNotConflictWithLocal) {
-                            console.log('[LifeOS] Cloud update received from server');
+                        if (isDifferent && isNewerThanLastSync && isNotConflictWithLocal) {
+                            console.log('[LifeOS] Valid cloud update received. Applying state merge.');
                             lastCloudSyncStr.current = newStr;
                             lastServerTime.current = serverUpdatedAt;
                             setStore(newData);
                             saveLocalStore(newData, userId);
+                        } else if (isDifferent) {
+                            if (!isNewerThanLastSync) console.log('[LifeOS] Ignoring sync: Server data is older than last known sync.');
+                            else if (!isNotConflictWithLocal) console.log('[LifeOS] Ignoring sync: Potential collision with live local edit.');
                         }
                     }
                 }
