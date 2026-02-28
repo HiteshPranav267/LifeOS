@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import isEqual from 'fast-deep-equal';
 import type { Store, Task, Event, Habit, BrainDump, WeeklyFocus, Transaction, Birthday } from '../types';
 import { supabase, SYNC_TABLE } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -78,6 +79,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const lastCloudSyncStr = useRef<string>('');
     const lastServerTime = useRef<number>(0);
     const lastLocalMutation = useRef<number>(0);
+    const isLoggingOut = useRef<boolean>(false);
 
     // 1. Auth & Session Management
     useEffect(() => {
@@ -164,7 +166,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // 4. Persistence Engine (Auto-save on store changes)
     useEffect(() => {
-        if (!isReady) return;
+        if (!isReady || isLoggingOut.current) return;
 
         if (isInitialMount.current) {
             isInitialMount.current = false;
@@ -172,15 +174,31 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         const currentStoreStr = JSON.stringify(store);
-        if (currentStoreStr === lastCloudSyncStr.current) {
-            return; // No meaningful change to save
+
+        // Deep equality check to prevent redundant saves or echoes
+        try {
+            const lastSaved = JSON.parse(lastCloudSyncStr.current || '{}');
+            if (isEqual(store, lastSaved)) return;
+        } catch (e) {
+            if (currentStoreStr === lastCloudSyncStr.current) return;
+        }
+
+        // Wipe Protection: If we're about to save an empty state but we had data before, 
+        // and we aren't explicitly in a 'clear all' flow, block it.
+        const isDataEmpty = store.tasks.length === 0 && store.events.length === 0 && store.habits.length === 0 && store.birthdays.length === 0;
+        const wasDataNotEmpty = lastCloudSyncStr.current && lastCloudSyncStr.current.length > 50; // rudimentary check
+        if (isDataEmpty && wasDataNotEmpty && !isLoggingOut.current) {
+            console.warn('[LifeOS] Wipe Protection: Blocking automatic save of empty state.');
+            return;
         }
 
         setIsSaving(true);
         const timer = setTimeout(async () => {
             const userId = currentUserId.current;
-            const storeToSave = store; // capture current state
+            const storeToSave = store;
             const nowIso = new Date().toISOString();
+
+            if (isLoggingOut.current || !userId) return;
 
             // Save to per-user localStorage
             saveLocalStore(storeToSave, userId);
@@ -195,7 +213,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     });
                     if (!error) {
                         setIsCloudSynced(true);
-                        // Confirmation that our data reached the cloud
                         lastServerTime.current = new Date(nowIso).getTime();
                     } else {
                         console.error('[LifeOS] Supabase Upsert Error:', error);
@@ -205,9 +222,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }
             }
             setIsSaving(false);
-        }, 300); // Faster sync: 300ms debounce
+        }, 300);
 
-        // Optimistically lock to prevent echoes while debouncing/saving
+        // Update the 'last intended sync' string so we don't re-trigger this effect unnecessarily
         lastCloudSyncStr.current = currentStoreStr;
 
         return () => clearTimeout(timer);
@@ -290,6 +307,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const signOut = async () => {
+        isLoggingOut.current = true;
         await supabase.auth.signOut();
         currentUserId.current = undefined;
         setStore({ ...DEFAULT_STORE });
