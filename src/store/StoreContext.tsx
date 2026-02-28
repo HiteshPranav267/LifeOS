@@ -264,19 +264,32 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         const newStr = JSON.stringify(newData);
 
                         // Sync Verification Logic
-                        const isDifferent = newStr !== lastCloudSyncStr.current;
+                        const isDifferent = !isEqual(newData, store);
                         const isNewerThanLastSync = serverUpdatedAt > lastServerTime.current;
-                        const isNotConflictWithLocal = serverUpdatedAt > (lastLocalMutation.current + 500);
+
+                        // Conflict Shield: Ignore cloud changes for 2.5 seconds after a local edit
+                        // to ensure church-server sync doesn't overwrite a live local session.
+                        const isNotConflictWithLocal = serverUpdatedAt > (lastLocalMutation.current + 2500);
 
                         if (isDifferent && isNewerThanLastSync && isNotConflictWithLocal) {
-                            console.log('[LifeOS] Valid cloud update received. Applying state merge.');
+                            // Wipe Protection: If the incoming cloud state is empty but we have local data,
+                            // ignore it - it's likely a race condition 'empty' pulse from Supabase.
+                            const cloudIsEmpty = newData.tasks.length === 0 && newData.events.length === 0 && newData.habits.length === 0;
+                            const localHasData = store.tasks.length > 0 || store.events.length > 0;
+
+                            if (cloudIsEmpty && localHasData) {
+                                console.warn('[LifeOS] Blocking sync: Cloud pulse is empty while local has data.');
+                                return;
+                            }
+
+                            console.log('[LifeOS] Applying remote cloud sync.');
                             lastCloudSyncStr.current = newStr;
                             lastServerTime.current = serverUpdatedAt;
                             setStore(newData);
                             saveLocalStore(newData, userId);
                         } else if (isDifferent) {
-                            if (!isNewerThanLastSync) console.log('[LifeOS] Ignoring sync: Server data is older than last known sync.');
-                            else if (!isNotConflictWithLocal) console.log('[LifeOS] Ignoring sync: Potential collision with live local edit.');
+                            if (!isNewerThanLastSync) console.log('[LifeOS] Sync Ignored: Server data is outdated.');
+                            else if (!isNotConflictWithLocal) console.log('[LifeOS] Sync Ignored: Local session priority.');
                         }
                     }
                 }
