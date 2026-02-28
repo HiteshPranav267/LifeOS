@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   ListTodo,
@@ -112,14 +112,33 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isReady, session } = useStore();
+
+  if (!isReady) {
+    return (
+      <div className="fixed inset-0 bg-[#050505] flex flex-col items-center justify-center z-[9999]">
+        <div className="w-12 h-12 rounded-full border-t-2 border-white animate-spin opacity-30" />
+      </div>
+    );
+  }
+
+  // If already logged in, instantly bounce them to their dashboard
+  if (session) {
+    return <Navigate to="/app" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 function App() {
   return (
     <StoreProvider>
       <Router>
         <Routes>
-          {/* Public Landing Page */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          {/* Public Authentication Pages */}
+          <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
 
           {/* Protected App Routes */}
           <Route path="/app/*" element={
