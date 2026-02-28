@@ -42,10 +42,17 @@ const getLocalStore = (userId?: string): Store => {
 
 const saveLocalStore = (store: Store, userId?: string) => {
     try {
-        localStorage.setItem(getStorageKey(userId), JSON.stringify(store));
+        const key = getStorageKey(userId);
+        localStorage.setItem(key, JSON.stringify(store));
+        localStorage.setItem(`${key}_timestamp`, Date.now().toString());
     } catch (err) {
         console.error('[LifeOS] Save Error', err);
     }
+};
+
+const getLocalTimestamp = (userId?: string): number => {
+    const ts = localStorage.getItem(`${getStorageKey(userId)}_timestamp`);
+    return ts ? parseInt(ts, 10) : 0;
 };
 
 interface StoreContextType {
@@ -121,22 +128,36 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                         .single();
 
                     if (data && data.data) {
-                        initialData = data.data as Store;
-                        // Defensive hydration for newly added fields on older cloud saves
-                        if (!initialData.transactions) initialData.transactions = [];
-                        if (!initialData.birthdays) initialData.birthdays = [];
-                        if (!initialData.weeklyFocus) initialData.weeklyFocus = [];
-                        if (!initialData.brainDumps) initialData.brainDumps = [];
-                        if (!initialData.habits) initialData.habits = [];
-                        if (!initialData.events) initialData.events = [];
-                        if (!initialData.tasks) initialData.tasks = [];
+                        const cloudData = data.data as Store;
+                        const cloudTime = new Date((data as any).updated_at).getTime();
+                        const localData = getLocalStore(userId);
+                        const localTime = getLocalTimestamp(userId);
 
-                        setIsCloudSynced(true);
-                        lastServerTime.current = new Date((data as any).updated_at).getTime();
-                        console.log('[LifeOS] Cloud data loaded for user:', userId);
+                        // Recovery Logic: If local is NEWER than cloud (unsaved changes before refresh)
+                        // pick local. Otherwise, take cloud.
+                        if (localTime > (cloudTime + 1000)) { // 1s buffer for clock drift
+                            console.log('[LifeOS] Local data is newer than cloud. Using local recovery.');
+                            initialData = localData;
+                            setIsCloudSynced(false); // Trigger a re-sync up to cloud
+                        } else {
+                            initialData = cloudData;
+                            // Defensive hydration for newly added fields on older cloud saves
+                            if (!initialData.transactions) initialData.transactions = [];
+                            if (!initialData.birthdays) initialData.birthdays = [];
+                            if (!initialData.weeklyFocus) initialData.weeklyFocus = [];
+                            if (!initialData.brainDumps) initialData.brainDumps = [];
+                            if (!initialData.habits) initialData.habits = [];
+                            if (!initialData.events) initialData.events = [];
+                            if (!initialData.tasks) initialData.tasks = [];
+
+                            setIsCloudSynced(true);
+                            lastServerTime.current = cloudTime;
+                            console.log('[LifeOS] Cloud data loaded for user:', userId);
+                        }
                     } else if (!error || error.code === 'PGRST116') {
-                        // No row yet — new user. Use defaults and push to cloud.
-                        console.log('[LifeOS] New user. Creating cloud baseline...');
+                        // No row yet — new user. Use defaults (or current local) and push to cloud.
+                        console.log('[LifeOS] New user/No cloud data. Checking local...');
+                        initialData = getLocalStore(userId);
                         await supabase.from(SYNC_TABLE).upsert({
                             id: userId,
                             data: initialData,
@@ -192,18 +213,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             return;
         }
 
+        const storeToSave = store;
+        const userId = currentUserId.current;
+
+        // CRITICAL: Save to LocalStorage IMMEDIATELY (no debounce)
+        // This ensures a page refresh never loses data.
+        saveLocalStore(storeToSave, userId);
+
         setIsSaving(true);
         const timer = setTimeout(async () => {
-            const userId = currentUserId.current;
-            const storeToSave = store;
-            const nowIso = new Date().toISOString();
-
             if (isLoggingOut.current || !userId) return;
 
-            // Save to per-user localStorage
-            saveLocalStore(storeToSave, userId);
+            const nowIso = new Date().toISOString();
 
-            // Sync to cloud if logged in
+            // Sync to cloud if logged in (debounced)
             if (session && userId) {
                 try {
                     const { error } = await supabase.from(SYNC_TABLE).upsert({
@@ -224,7 +247,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setIsSaving(false);
         }, 300);
 
-        // Update the 'last intended sync' string so we don't re-trigger this effect unnecessarily
+        // Optimistically lock to prevent echoes while debouncing/saving
         lastCloudSyncStr.current = currentStoreStr;
 
         return () => clearTimeout(timer);
