@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   ListTodo,
@@ -25,6 +26,32 @@ import NotFoundPage from './pages/NotFoundPage';
 import BirthdaysPage from './pages/BirthdaysPage';
 
 import { StoreProvider, useStore } from './store/StoreContext.tsx';
+
+// Error Boundary to prevent blank screens if React crashes
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, info: any) {
+    console.error('[LifeOS] React Error:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <LandingPage />;
+    }
+    return this.props.children;
+  }
+}
 
 const BottomNav = () => {
   const navItems = [
@@ -96,8 +123,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
+  // Not logged in? Redirect to landing page at /
   if (!session) {
-    return <LandingPage />;
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -113,33 +141,37 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
-    <StoreProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+    <ErrorBoundary>
+      <StoreProvider>
+        <Router>
+          <Routes>
+            {/* Landing page - always accessible, no store dependency */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected App Routes */}
-          <Route path="/app/*" element={
-            <AppLayout>
-              <Routes>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/tasks" element={<TasksPage />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/habits" element={<HabitsPage />} />
-                <Route path="/money" element={<MoneyPage />} />
-                <Route path="/brain-dump" element={<BrainDumpPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/birthdays" element={<BirthdaysPage />} />
-                <Route path="*" element={<DashboardPage />} />
-              </Routes>
-            </AppLayout>
-          } />
+            {/* Protected App Routes */}
+            <Route path="/app/*" element={
+              <AppLayout>
+                <Routes>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/tasks" element={<TasksPage />} />
+                  <Route path="/calendar" element={<CalendarPage />} />
+                  <Route path="/habits" element={<HabitsPage />} />
+                  <Route path="/money" element={<MoneyPage />} />
+                  <Route path="/brain-dump" element={<BrainDumpPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/birthdays" element={<BirthdaysPage />} />
+                  <Route path="*" element={<DashboardPage />} />
+                </Routes>
+              </AppLayout>
+            } />
 
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </Router>
-    </StoreProvider>
+            {/* 404 for everything else */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Router>
+      </StoreProvider>
+    </ErrorBoundary>
   );
 }
 
