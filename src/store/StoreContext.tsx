@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import type { Store, Task, Event, Habit, BrainDump, WeeklyFocus, Transaction, Birthday } from '../types';
 import { supabase, SYNC_TABLE } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -16,7 +16,6 @@ const DEFAULT_STORE: Store = {
     },
 };
 
-// Per-user localStorage key
 const getStorageKey = (userId?: string) => userId ? `lifeos_data_${userId}` : 'lifeos_data_guest';
 
 const getLocalStore = (userId?: string): Store => {
@@ -46,6 +45,20 @@ const saveLocalStore = (store: Store, userId?: string) => {
     }
 };
 
+// Hydrate missing fields on cloud data
+const hydrateStore = (data: any): Store => {
+    const store = data as Store;
+    if (!store.transactions) store.transactions = [];
+    if (!store.birthdays) store.birthdays = [];
+    if (!store.weeklyFocus) store.weeklyFocus = [];
+    if (!store.brainDumps) store.brainDumps = [];
+    if (!store.habits) store.habits = [];
+    if (!store.events) store.events = [];
+    if (!store.tasks) store.tasks = [];
+    if (!store.settings) store.settings = { theme: 'dark' };
+    return store;
+};
+
 interface StoreContextType {
     store: Store;
     session: Session | null;
@@ -72,168 +85,152 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isSaving, setIsSaving] = useState(false);
     const [isCloudSynced, setIsCloudSynced] = useState(false);
     const [isReady, setIsReady] = useState(false);
-    const isInitialMount = useRef(true);
+    const hasBooted = useRef(false);
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentUserId = useRef<string | undefined>(undefined);
-    const bootIdRef = useRef(0); // Tracks which boot is the latest
 
-    // 1. Auth & Session Management
+    // Helper: Load data from cloud for a user
+    const loadCloudData = useCallback(async (userId: string): Promise<Store | null> => {
+        try {
+            const { data, error } = await supabase
+                .from(SYNC_TABLE)
+                .select('data')
+                .eq('id', userId)
+                .single();
+
+            if (data && data.data) {
+                return hydrateStore(data.data);
+            }
+
+            // No row found — new user
+            if (!error || error.code === 'PGRST116') {
+                return null; // Signals "new user"
+            }
+
+            return null;
+        } catch (e) {
+            console.error('[LifeOS] Cloud load error:', e);
+            return null;
+        }
+    }, []);
+
+    // Helper: Save data to cloud
+    const saveToCloud = useCallback(async (userId: string, data: Store) => {
+        try {
+            const { error } = await supabase.from(SYNC_TABLE).upsert({
+                id: userId,
+                data: data,
+                updated_at: new Date().toISOString()
+            });
+            if (error) {
+                console.error('[LifeOS] Cloud save error:', error);
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.warn('[LifeOS] Cloud save failed:', e);
+            return false;
+        }
+    }, []);
+
+    // 1. Auth — runs ONCE on mount, never triggers data reload
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session);
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+            setSession(s);
         });
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+            setSession(s);
         });
 
         return () => subscription.unsubscribe();
     }, []);
 
-    // 2. Theme Synchronization
+    // 2. Theme sync
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', store.settings.theme);
     }, [store.settings.theme]);
 
-    // 3. Boot Logic — pull from cloud on login, fallback to local
+    // 3. Boot — runs ONCE when we first get a definitive session answer
     useEffect(() => {
-        // Increment boot ID so any previous in-flight boot becomes stale
-        const thisBootId = ++bootIdRef.current;
+        // Don't boot until we have a definitive answer from Supabase auth
+        // (session will be null initially, then get set by getSession())
+        // We use hasBooted to ensure this only runs ONCE
+        if (hasBooted.current) return;
 
         const boot = async () => {
-            setIsReady(false);
-            isInitialMount.current = true;
+            hasBooted.current = true;
 
-            try {
-                const { data: { session: currentSession } } = await supabase.auth.getSession();
-                const userId = currentSession?.user?.id;
+            const userId = session?.user?.id;
+            currentUserId.current = userId;
 
-                // If a newer boot started while we were awaiting, abort this one
-                if (thisBootId !== bootIdRef.current) return;
+            if (userId) {
+                // Logged in user — try cloud first
+                const cloudData = await loadCloudData(userId);
 
-                currentUserId.current = userId;
-
-                let initialData: Store = getLocalStore(userId);
-
-                if (currentSession && userId) {
-                    try {
-                        const { data, error } = await supabase
-                            .from(SYNC_TABLE)
-                            .select('data')
-                            .eq('id', userId)
-                            .single();
-
-                        // Check again after another await
-                        if (thisBootId !== bootIdRef.current) return;
-
-                        if (data && data.data) {
-                            initialData = data.data as Store;
-                            if (!initialData.transactions) initialData.transactions = [];
-                            if (!initialData.birthdays) initialData.birthdays = [];
-                            if (!initialData.weeklyFocus) initialData.weeklyFocus = [];
-                            if (!initialData.brainDumps) initialData.brainDumps = [];
-                            if (!initialData.habits) initialData.habits = [];
-                            if (!initialData.events) initialData.events = [];
-                            if (!initialData.tasks) initialData.tasks = [];
-                            setIsCloudSynced(true);
-                        } else if (!error || error.code === 'PGRST116') {
-                            await supabase.from(SYNC_TABLE).upsert({
-                                id: userId,
-                                data: initialData,
-                                updated_at: new Date().toISOString()
-                            });
-                            if (thisBootId !== bootIdRef.current) return;
-                            setIsCloudSynced(true);
-                        }
-                    } catch (e) {
-                        console.error('[LifeOS] Cloud pull error:', e);
-                    }
+                if (cloudData) {
+                    // Cloud has data — use it
+                    setStore(cloudData);
+                    saveLocalStore(cloudData, userId);
+                    setIsCloudSynced(true);
+                } else {
+                    // New user or no cloud row — use local, push to cloud
+                    const localData = getLocalStore(userId);
+                    setStore(localData);
+                    await saveToCloud(userId, localData);
+                    setIsCloudSynced(true);
                 }
-
-                // Final stale check before applying state
-                if (thisBootId !== bootIdRef.current) return;
-
-                if (!initialData.settings) initialData.settings = { theme: 'dark' };
-                setStore(initialData);
-                saveLocalStore(initialData, userId);
-            } catch (e) {
-                console.error('[LifeOS] Boot error - loading defaults:', e);
-                if (thisBootId !== bootIdRef.current) return;
-                setStore({ ...DEFAULT_STORE });
+            } else {
+                // Guest — just use local
+                setStore(getLocalStore());
             }
 
-            // ALWAYS mark as ready (only if this boot is still the latest)
-            if (thisBootId === bootIdRef.current) {
-                setIsReady(true);
-            }
+            setIsReady(true);
         };
 
-        boot();
-    }, [session?.user?.id]);
+        // Wait a tiny moment to let the auth state settle  
+        // This prevents the "null session" boot from racing with the "real session" boot
+        const timer = setTimeout(boot, 100);
+        return () => clearTimeout(timer);
+    }, [session, loadCloudData, saveToCloud]);
 
-    // 4. Persistence Engine — save locally immediately, push to cloud with debounce
-    // IMPORTANT: We use a ref for session so that this effect ONLY runs when `store` changes,
-    // NOT when session changes. This prevents the "new device login wipe" bug where
-    // a session change would trigger a save of empty DEFAULT_STORE before boot could pull cloud data.
-    const sessionRef = useRef(session);
-    sessionRef.current = session;
-
+    // 4. Persistence Engine — only reacts to STORE changes, never session changes
     useEffect(() => {
         if (!isReady) return;
 
-        if (isInitialMount.current) {
-            isInitialMount.current = false;
-            return;
-        }
-
         const userId = currentUserId.current;
-        const currentSession = sessionRef.current;
 
-        // Save to localStorage immediately
+        // Save locally immediately
         saveLocalStore(store, userId);
 
-        // Debounced cloud sync
+        // Debounced cloud save
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
         setIsSaving(true);
-        const timer = setTimeout(async () => {
-            if (currentSession && userId) {
-                try {
-                    const { error } = await supabase.from(SYNC_TABLE).upsert({
-                        id: userId,
-                        data: store,
-                        updated_at: new Date().toISOString()
-                    });
-                    if (!error) {
-                        setIsCloudSynced(true);
-                    } else {
-                        console.error('[LifeOS] Cloud save error:', error);
-                    }
-                } catch (e) {
-                    console.warn('[LifeOS] Cloud sync failed:', e);
-                }
+        saveTimerRef.current = setTimeout(async () => {
+            if (userId) {
+                const success = await saveToCloud(userId, store);
+                if (success) setIsCloudSynced(true);
             }
             setIsSaving(false);
         }, 500);
-
-        return () => clearTimeout(timer);
-    }, [store, isReady]);
+    }, [store, isReady, saveToCloud]);
 
     const forceCloudPull = async () => {
-        if (!session) return;
-        const { data } = await supabase
-            .from(SYNC_TABLE)
-            .select('data')
-            .eq('id', session.user.id)
-            .single();
-        if (data && data.data) {
-            setStore(data.data as Store);
-            saveLocalStore(data.data as Store, session.user.id);
+        const userId = session?.user?.id;
+        if (!userId) return;
+        const cloudData = await loadCloudData(userId);
+        if (cloudData) {
+            setStore(cloudData);
+            saveLocalStore(cloudData, userId);
             setIsCloudSynced(true);
         }
     };
 
     const signOut = async () => {
         await supabase.auth.signOut();
-        // Hard redirect immediately — don't touch React state,
-        // the full page reload will reset everything cleanly.
+        hasBooted.current = false; // Allow re-boot on next login
+        currentUserId.current = undefined;
         window.location.replace('/');
     };
 
