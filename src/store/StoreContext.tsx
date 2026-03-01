@@ -99,50 +99,53 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             setIsReady(false);
             isInitialMount.current = true;
 
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
-            const userId = currentSession?.user?.id;
-            currentUserId.current = userId;
+            try {
+                const { data: { session: currentSession } } = await supabase.auth.getSession();
+                const userId = currentSession?.user?.id;
+                currentUserId.current = userId;
 
-            let initialData: Store = getLocalStore(userId);
+                let initialData: Store = getLocalStore(userId);
 
-            if (currentSession && userId) {
-                try {
-                    const { data, error } = await supabase
-                        .from(SYNC_TABLE)
-                        .select('data')
-                        .eq('id', userId)
-                        .single();
+                if (currentSession && userId) {
+                    try {
+                        const { data, error } = await supabase
+                            .from(SYNC_TABLE)
+                            .select('data')
+                            .eq('id', userId)
+                            .single();
 
-                    if (data && data.data) {
-                        initialData = data.data as Store;
-                        // Defensive hydration
-                        if (!initialData.transactions) initialData.transactions = [];
-                        if (!initialData.birthdays) initialData.birthdays = [];
-                        if (!initialData.weeklyFocus) initialData.weeklyFocus = [];
-                        if (!initialData.brainDumps) initialData.brainDumps = [];
-                        if (!initialData.habits) initialData.habits = [];
-                        if (!initialData.events) initialData.events = [];
-                        if (!initialData.tasks) initialData.tasks = [];
-                        setIsCloudSynced(true);
-                    } else if (!error || error.code === 'PGRST116') {
-                        // New user — push local/default to cloud
-                        await supabase.from(SYNC_TABLE).upsert({
-                            id: userId,
-                            data: initialData,
-                            updated_at: new Date().toISOString()
-                        });
-                        setIsCloudSynced(true);
+                        if (data && data.data) {
+                            initialData = data.data as Store;
+                            if (!initialData.transactions) initialData.transactions = [];
+                            if (!initialData.birthdays) initialData.birthdays = [];
+                            if (!initialData.weeklyFocus) initialData.weeklyFocus = [];
+                            if (!initialData.brainDumps) initialData.brainDumps = [];
+                            if (!initialData.habits) initialData.habits = [];
+                            if (!initialData.events) initialData.events = [];
+                            if (!initialData.tasks) initialData.tasks = [];
+                            setIsCloudSynced(true);
+                        } else if (!error || error.code === 'PGRST116') {
+                            await supabase.from(SYNC_TABLE).upsert({
+                                id: userId,
+                                data: initialData,
+                                updated_at: new Date().toISOString()
+                            });
+                            setIsCloudSynced(true);
+                        }
+                    } catch (e) {
+                        console.error('[LifeOS] Cloud pull error:', e);
                     }
-                } catch (e) {
-                    console.error('[LifeOS] Cloud pull error:', e);
-                    // Keep local data as fallback
                 }
+
+                if (!initialData.settings) initialData.settings = { theme: 'dark' };
+                setStore(initialData);
+                saveLocalStore(initialData, userId);
+            } catch (e) {
+                console.error('[LifeOS] Boot error - loading defaults:', e);
+                setStore({ ...DEFAULT_STORE });
             }
 
-            if (!initialData.settings) initialData.settings = { theme: 'dark' };
-
-            setStore(initialData);
-            saveLocalStore(initialData, userId);
+            // ALWAYS mark as ready, even if everything above failed
             setIsReady(true);
         };
 

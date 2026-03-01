@@ -12,7 +12,12 @@
     <title>lifeos</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="position:fixed;inset:0;background:#050505;display:flex;align-items:center;justify-content:center;">
+        <div style="width:40px;height:40px;border-radius:50%;border:2px solid transparent;border-top-color:#fff;animation:spin 1s linear infinite;opacity:0.3;"></div>
+      </div>
+      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
