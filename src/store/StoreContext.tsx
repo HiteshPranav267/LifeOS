@@ -150,6 +150,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, [session?.user?.id]);
 
     // 4. Persistence Engine — save locally immediately, push to cloud with debounce
+    // IMPORTANT: We use a ref for session so that this effect ONLY runs when `store` changes,
+    // NOT when session changes. This prevents the "new device login wipe" bug where
+    // a session change would trigger a save of empty DEFAULT_STORE before boot could pull cloud data.
+    const sessionRef = useRef(session);
+    sessionRef.current = session;
+
     useEffect(() => {
         if (!isReady) return;
 
@@ -159,6 +165,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
 
         const userId = currentUserId.current;
+        const currentSession = sessionRef.current;
 
         // Save to localStorage immediately
         saveLocalStore(store, userId);
@@ -166,7 +173,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         // Debounced cloud sync
         setIsSaving(true);
         const timer = setTimeout(async () => {
-            if (session && userId) {
+            if (currentSession && userId) {
                 try {
                     const { error } = await supabase.from(SYNC_TABLE).upsert({
                         id: userId,
@@ -186,7 +193,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [store, isReady, session]);
+    }, [store, isReady]);
 
     const forceCloudPull = async () => {
         if (!session) return;
