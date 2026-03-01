@@ -47,7 +47,28 @@ class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return <LandingPage />;
+      // Simple fallback — NO hooks, NO router, NO context
+      return (
+        <div style={{
+          minHeight: '100vh', background: '#050505', color: '#fff',
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', fontFamily: "'Inter', sans-serif", textAlign: 'center',
+          padding: '2rem'
+        }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: '1rem' }}>lifeos.</h1>
+          <p style={{ color: '#888', marginBottom: '2rem' }}>Something went wrong. Please refresh the page.</p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '12px 32px', background: '#fff', color: '#000',
+              border: 'none', borderRadius: '12px', fontWeight: 600,
+              cursor: 'pointer', fontSize: '14px'
+            }}
+          >
+            Refresh
+          </button>
+        </div>
+      );
     }
     return this.props.children;
   }
