@@ -204,9 +204,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     const signOut = async () => {
         await supabase.auth.signOut();
-        currentUserId.current = undefined;
-        setStore({ ...DEFAULT_STORE });
-        window.location.href = '/';
+        // Hard redirect immediately — don't touch React state,
+        // the full page reload will reset everything cleanly.
+        window.location.replace('/');
     };
 
     const setTasks = (tasks: Task[]) => setStore(prev => ({ ...prev, tasks }));
