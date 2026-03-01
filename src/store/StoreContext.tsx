@@ -74,6 +74,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isReady, setIsReady] = useState(false);
     const isInitialMount = useRef(true);
     const currentUserId = useRef<string | undefined>(undefined);
+    const bootIdRef = useRef(0); // Tracks which boot is the latest
 
     // 1. Auth & Session Management
     useEffect(() => {
@@ -95,6 +96,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // 3. Boot Logic — pull from cloud on login, fallback to local
     useEffect(() => {
+        // Increment boot ID so any previous in-flight boot becomes stale
+        const thisBootId = ++bootIdRef.current;
+
         const boot = async () => {
             setIsReady(false);
             isInitialMount.current = true;
@@ -102,6 +106,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             try {
                 const { data: { session: currentSession } } = await supabase.auth.getSession();
                 const userId = currentSession?.user?.id;
+
+                // If a newer boot started while we were awaiting, abort this one
+                if (thisBootId !== bootIdRef.current) return;
+
                 currentUserId.current = userId;
 
                 let initialData: Store = getLocalStore(userId);
@@ -113,6 +121,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                             .select('data')
                             .eq('id', userId)
                             .single();
+
+                        // Check again after another await
+                        if (thisBootId !== bootIdRef.current) return;
 
                         if (data && data.data) {
                             initialData = data.data as Store;
@@ -130,6 +141,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                                 data: initialData,
                                 updated_at: new Date().toISOString()
                             });
+                            if (thisBootId !== bootIdRef.current) return;
                             setIsCloudSynced(true);
                         }
                     } catch (e) {
@@ -137,16 +149,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     }
                 }
 
+                // Final stale check before applying state
+                if (thisBootId !== bootIdRef.current) return;
+
                 if (!initialData.settings) initialData.settings = { theme: 'dark' };
                 setStore(initialData);
                 saveLocalStore(initialData, userId);
             } catch (e) {
                 console.error('[LifeOS] Boot error - loading defaults:', e);
+                if (thisBootId !== bootIdRef.current) return;
                 setStore({ ...DEFAULT_STORE });
             }
 
-            // ALWAYS mark as ready, even if everything above failed
-            setIsReady(true);
+            // ALWAYS mark as ready (only if this boot is still the latest)
+            if (thisBootId === bootIdRef.current) {
+                setIsReady(true);
+            }
         };
 
         boot();
