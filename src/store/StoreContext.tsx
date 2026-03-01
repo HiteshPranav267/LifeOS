@@ -151,48 +151,44 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         document.documentElement.setAttribute('data-theme', store.settings.theme);
     }, [store.settings.theme]);
 
-    // 3. Boot — runs ONCE when we first get a definitive session answer
+    // 3. Boot — runs ONCE on mount, gets its own session directly from Supabase
     useEffect(() => {
-        // Don't boot until we have a definitive answer from Supabase auth
-        // (session will be null initially, then get set by getSession())
-        // We use hasBooted to ensure this only runs ONCE
         if (hasBooted.current) return;
+        hasBooted.current = true;
 
         const boot = async () => {
-            hasBooted.current = true;
+            try {
+                // Get session directly from Supabase — don't rely on React state
+                const { data: { session: currentSession } } = await supabase.auth.getSession();
+                const userId = currentSession?.user?.id;
+                currentUserId.current = userId;
 
-            const userId = session?.user?.id;
-            currentUserId.current = userId;
+                if (userId) {
+                    const cloudData = await loadCloudData(userId);
 
-            if (userId) {
-                // Logged in user — try cloud first
-                const cloudData = await loadCloudData(userId);
-
-                if (cloudData) {
-                    // Cloud has data — use it
-                    setStore(cloudData);
-                    saveLocalStore(cloudData, userId);
-                    setIsCloudSynced(true);
+                    if (cloudData) {
+                        setStore(cloudData);
+                        saveLocalStore(cloudData, userId);
+                        setIsCloudSynced(true);
+                    } else {
+                        const localData = getLocalStore(userId);
+                        setStore(localData);
+                        await saveToCloud(userId, localData);
+                        setIsCloudSynced(true);
+                    }
                 } else {
-                    // New user or no cloud row — use local, push to cloud
-                    const localData = getLocalStore(userId);
-                    setStore(localData);
-                    await saveToCloud(userId, localData);
-                    setIsCloudSynced(true);
+                    setStore(getLocalStore());
                 }
-            } else {
-                // Guest — just use local
-                setStore(getLocalStore());
+            } catch (e) {
+                console.error('[LifeOS] Boot error:', e);
+                setStore({ ...DEFAULT_STORE });
             }
 
             setIsReady(true);
         };
 
-        // Wait a tiny moment to let the auth state settle  
-        // This prevents the "null session" boot from racing with the "real session" boot
-        const timer = setTimeout(boot, 100);
-        return () => clearTimeout(timer);
-    }, [session, loadCloudData, saveToCloud]);
+        boot();
+    }, [loadCloudData, saveToCloud]);
 
     // 4. Persistence Engine — only reacts to STORE changes, never session changes
     useEffect(() => {
