@@ -1,73 +1,89 @@
-# React + TypeScript + Vite
+# LifeOS.
+### The Minimalist, All-in-One Life Ecosystem.
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+LifeOS is a premium, minimalist personal management suite built for those who value aesthetics, performance, and privacy. From high-intensity training to natural language nutrition tracking, LifeOS consolidates your entire digital life into a single, beautiful interface.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Key Modules
 
-## React Compiler
+### 🍎 Nutrition & Fuel
+*   **AI-Powered Search**: Natural language food logging integrated with the CalorieNinjas API.
+*   **Macro-Nutrient Tracking**: Real-time monitoring of Proteins, Carbs, Fats, and daily Calorie goals.
+*   **Smart Hydration**: Customizable daily water goals with manual quantity logging support.
+*   **Body Metrics**: Calculate and track your TDEE (Total Daily Energy Expenditure) based on your metrics and activity levels.
+*   **Weight Trajectory**: Visualize your progress with interactive, deduplicated history charts.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 🏋️ Fitness & Form
+*   **Exercise Intelligence**: Access to a massive database of exercises with categorical filtering.
+*   **Workout Architecture**: Create custom training sessions, log sets, reps, and precise weights.
+*   **Templates**: Save and reuse your best workout routines for consistent progress.
 
-## Expanding the ESLint configuration
+### ✅ Productivity & Organization
+*   **Priority-Based Tasks**: Intelligently sorted task management (High, Medium, Low priority).
+*   **Habit Architect**: Build and maintain daily streaks with a minimalist habit tracker.
+*   **Brain Dump**: A friction-free space to capture raw ideas, notes, and digital scraps before they vanish.
+*   **Dynamic Calendar**: Unified view of your upcoming events and schedule.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 💰 Finance & Flow
+*   **Expense Management**: Categorized income and expense tracking.
+*   **Balance Dashboard**: Instant visibility into your current net position across all logs.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## ✨ Features
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+*   **Cloud Sync**: Powered by **Supabase**. Your data follows you across every device with secure, real-time synchronization.
+*   **Guest First**: Use the entire app locally with `localStorage` persistence before choosing to create an account.
+*   **Dark/Light Excellence**: A meticulously crafted design system that looks premium in both light and dark modes.
+*   **Responsive Flow**: Optimized for a centered, focused experience on desktop and tablet.
+*   **Privacy Centric**: Your data is your own. We focus on local-first performance with optional cloud backup.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 🛠️ Technology Stack
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+*   **Core**: React 18, Vite, TypeScript
+*   **Styling**: Tailwind CSS (Minimal utility-first design)
+*   **Icons**: Lucide React (Streamlined iconography)
+*   **Charts**: Recharts (Data visualization)
+*   **Backend/Auth**: Supabase (PostgreSQL + Auth)
+*   **Routing**: React Router DOM
+
+---
+
+## 📦 Local Development
+
+1.  **Clone the Repository**
+    ```bash
+    git clone https://github.com/HiteshPranav267/LifeOS.git
+    cd LifeOS
+    ```
+
+2.  **Install Dependencies**
+    ```bash
+    npm install
+    ```
+
+3.  **Environment Setup**
+    Create a `.env` file in the root directory:
+    ```env
+    VITE_SUPABASE_URL=your_supabase_url
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
+
+4.  **Run Development Server**
+    ```bash
+    npm run dev
+    ```
+
+---
+
+## 📬 Support & Feedback
+
+Have a suggestion or found a bug? I'd love to hear from you.
+Reach out directly: **[hiteshpranavreddy.d@gmail.com](mailto:hiteshpranavreddy.d@gmail.com)**
+
+---
+
+*Built with ❤️ for a better life ecosystem.*
