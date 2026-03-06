@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useStore } from '../store/StoreContext.tsx';
 import { Plus, Check, Trash2, Pencil, Bookmark, Circle } from 'lucide-react';
 import type { Task } from '../types';
@@ -59,8 +59,30 @@ const TasksPage = () => {
         setPriority('medium');
     };
 
-    const pendingTasks = store.tasks.filter(t => t.status !== 'completed');
-    const completedTasks = store.tasks.filter(t => t.status === 'completed');
+    const pendingTasks = useMemo(() => {
+        const tasks = store.tasks.filter(t => t.status !== 'completed');
+
+        const high = tasks.filter(t => t.priority === 'high');
+        const medium = tasks.filter(t => t.priority === 'medium');
+        const low = tasks.filter(t => t.priority === 'low');
+        const others = tasks.filter(t => !['high', 'medium', 'low'].includes(t.priority));
+
+        const sortByDate = (a: Task, b: Task) =>
+            new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+
+        return [
+            ...high.sort(sortByDate),
+            ...medium.sort(sortByDate),
+            ...low.sort(sortByDate),
+            ...others.sort(sortByDate)
+        ];
+    }, [store.tasks]);
+
+    const completedTasks = useMemo(() => {
+        return [...store.tasks]
+            .filter(t => t.status === 'completed')
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [store.tasks]);
 
     return (
         <div className="flex flex-col gap-10 max-w-2xl mx-auto">
