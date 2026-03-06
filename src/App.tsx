@@ -11,6 +11,8 @@ import {
   Sun,
   Layers,
   Gift,
+  Apple,
+  Dumbbell
 } from 'lucide-react';
 
 import DashboardPage from './pages/DashboardPage';
@@ -24,6 +26,8 @@ import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import NotFoundPage from './pages/NotFoundPage';
 import BirthdaysPage from './pages/BirthdaysPage';
+import NutritionPage from './pages/NutritionPage';
+import FitnessPage from './pages/FitnessPage';
 
 import { StoreProvider, useStore } from './store/StoreContext.tsx';
 
@@ -79,6 +83,8 @@ const BottomNav = () => {
     { name: 'Home', path: '/app', icon: LayoutDashboard },
     { name: 'Tasks', path: '/app/tasks', icon: ListTodo },
     { name: 'Calendar', path: '/app/calendar', icon: Calendar },
+    { name: 'Nutrition', path: '/app/nutrition', icon: Apple },
+    { name: 'Fitness', path: '/app/fitness', icon: Dumbbell },
     { name: 'Money', path: '/app/money', icon: Wallet },
     { name: 'Brain', path: '/app/brain-dump', icon: Brain },
     { name: 'Birthdays', path: '/app/birthdays', icon: Gift },
@@ -182,6 +188,8 @@ function App() {
                   <Route path="/brain-dump" element={<BrainDumpPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/birthdays" element={<BirthdaysPage />} />
+                  <Route path="/nutrition" element={<NutritionPage />} />
+                  <Route path="/fitness" element={<FitnessPage />} />
                   <Route path="*" element={<DashboardPage />} />
                 </Routes>
               </AppLayout>

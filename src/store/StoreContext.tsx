@@ -14,6 +14,21 @@ const DEFAULT_STORE: Store = {
     settings: {
         theme: 'dark',
     },
+    nutrition: {
+        metrics: { height: 0, weight: 0, age: 0, activityLevel: 'sedentary', lastUpdated: new Date().toISOString() },
+        weightHistory: [],
+        foodLogs: {},
+        waterLogs: {},
+        waterGoal: 2500,
+        streak: 0
+    },
+    fitness: {
+        sessions: [],
+        templates: [],
+        prs: [],
+        cardioLogs: [],
+        streak: 0
+    }
 };
 
 const getStorageKey = (userId?: string) => userId ? `lifeos_data_${userId}` : 'lifeos_data_guest';
@@ -30,6 +45,8 @@ const getLocalStore = (userId?: string): Store => {
         if (!parsed.habits) parsed.habits = [];
         if (!parsed.events) parsed.events = [];
         if (!parsed.tasks) parsed.tasks = [];
+        if (!parsed.nutrition) parsed.nutrition = DEFAULT_STORE.nutrition;
+        if (!parsed.fitness) parsed.fitness = DEFAULT_STORE.fitness;
         if (!parsed.settings) parsed.settings = DEFAULT_STORE.settings;
         return parsed;
     } catch {
@@ -55,6 +72,10 @@ const hydrateStore = (data: any): Store => {
     if (!store.habits) store.habits = [];
     if (!store.events) store.events = [];
     if (!store.tasks) store.tasks = [];
+    if (!store.nutrition) store.nutrition = DEFAULT_STORE.nutrition;
+    if (store.nutrition && !store.nutrition.waterGoal) store.nutrition.waterGoal = DEFAULT_STORE.nutrition.waterGoal;
+    if (!store.fitness) store.fitness = DEFAULT_STORE.fitness;
+    if (store.fitness && !store.fitness.templates) store.fitness.templates = [];
     if (!store.settings) store.settings = { theme: 'dark' };
     return store;
 };
@@ -72,6 +93,9 @@ interface StoreContextType {
     setWeeklyFocus: (weeklyFocus: WeeklyFocus[]) => void;
     setTransactions: (transactions: Transaction[]) => void;
     setBirthdays: (birthdays: Birthday[]) => void;
+    setNutrition: (nutrition: Store['nutrition']) => void;
+    setFitness: (fitness: Store['fitness']) => void;
+    setSettings: (settings: Store['settings']) => void;
     setTheme: (theme: 'light' | 'dark') => void;
     forceCloudPull: () => Promise<void>;
     signOut: () => Promise<void>;
@@ -237,11 +261,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const setWeeklyFocus = (weeklyFocus: WeeklyFocus[]) => setStore(prev => ({ ...prev, weeklyFocus }));
     const setTransactions = (transactions: Transaction[]) => setStore(prev => ({ ...prev, transactions }));
     const setBirthdays = (birthdays: Birthday[]) => setStore(prev => ({ ...prev, birthdays }));
+    const setNutrition = (nutrition: Store['nutrition']) => setStore(prev => ({ ...prev, nutrition }));
+    const setFitness = (fitness: Store['fitness']) => setStore(prev => ({ ...prev, fitness }));
+    const setSettings = (settings: Store['settings']) => setStore(prev => ({ ...prev, settings }));
     const setTheme = (theme: 'light' | 'dark') => setStore(prev => ({ ...prev, settings: { ...prev.settings, theme } }));
 
     return (
         <StoreContext.Provider value={{
-            store, session, isSaving, isCloudSynced, isReady, setTasks, setEvents, setHabits, setBrainDumps, setWeeklyFocus, setTransactions, setBirthdays, setTheme, forceCloudPull, signOut
+            store, session, isSaving, isCloudSynced, isReady, setTasks, setEvents, setHabits, setBrainDumps, setWeeklyFocus, setTransactions, setBirthdays, setNutrition, setFitness, setSettings, setTheme, forceCloudPull, signOut
         }}>
             {children}
         </StoreContext.Provider>

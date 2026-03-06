@@ -1,5 +1,5 @@
 import { useStore } from '../store/StoreContext.tsx';
-import { Sun, Moon, Database, LogOut, User } from 'lucide-react';
+import { Sun, Moon, Database, LogOut, User, Mail } from 'lucide-react';
 
 const SettingsPage = () => {
     const { store, setTheme, session, signOut } = useStore();
@@ -100,6 +100,25 @@ const SettingsPage = () => {
                     <span className="text-xs text-[var(--text-secondary)]">Clears browser cache and reloads from cloud</span>
                 </div>
             </div>
+
+            {/* Support */}
+            <a
+                href="mailto:hiteshpranavreddy.d@gmail.com?subject=LifeOS Suggestion"
+                className="card cursor-pointer hover:bg-[var(--bg-elevated)] transition-all active:scale-[0.99] flex items-center justify-between group"
+            >
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Mail size={22} className="text-blue-500" />
+                    </div>
+                    <div>
+                        <span className="text-sm font-semibold block uppercase tracking-wider">Have a suggestion?</span>
+                        <span className="text-xs text-[var(--text-secondary)]">Reach out to the developer</span>
+                    </div>
+                </div>
+                <div className="text-[var(--text-secondary)] text-[10px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                    Mail To
+                </div>
+            </a>
         </div>
     );
 };

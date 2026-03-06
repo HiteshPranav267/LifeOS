@@ -1,5 +1,5 @@
 import { useStore } from '../store/StoreContext.tsx';
-import { CheckCircle2, Calendar, Activity, Wallet, Brain, ArrowRight, Gift } from 'lucide-react';
+import { CheckCircle2, Calendar, Activity, Wallet, Brain, ArrowRight, Gift, Apple, Dumbbell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const DashboardPage = () => {
@@ -26,11 +26,17 @@ const DashboardPage = () => {
         })
         .filter(b => b.isToday);
 
+    const today = new Date().toISOString().split('T')[0];
+    const todayCals = (store.nutrition?.foodLogs?.[today] || []).reduce((acc, curr) => acc + curr.calories, 0);
+    const todayWorkout = (store.fitness?.sessions || []).find(s => s.date === today && !s.isTemplate);
+
     const cards = [
         { name: 'Tasks', value: `${activeTasksCount} Active`, icon: CheckCircle2, color: 'text-blue-500', bg: 'bg-blue-500/10', path: '/app/tasks' },
-        { name: 'Calendar', value: `${upcomingEvents} Upcoming`, icon: Calendar, color: 'text-purple-500', bg: 'bg-purple-500/10', path: '/app/calendar' },
+        { name: 'Nutrition', value: `${todayCals} kcal`, icon: Apple, color: 'text-orange-500', bg: 'bg-orange-500/10', path: '/app/nutrition' },
+        { name: 'Fitness', value: todayWorkout ? `${todayWorkout.exercises.length} Exercises` : 'No Workout', icon: Dumbbell, color: 'text-red-500', bg: 'bg-red-500/10', path: '/app/fitness' },
         { name: 'Money', value: `₹${balance.toLocaleString('en-IN')}`, icon: Wallet, color: 'text-green-500', bg: 'bg-green-500/10', path: '/app/money' },
-        { name: 'Brain', value: `${store.brainDumps.length} Captured`, icon: Brain, color: 'text-orange-500', bg: 'bg-orange-500/10', path: '/app/brain-dump' },
+        { name: 'Brain', value: `${store.brainDumps.length} Captured`, icon: Brain, color: 'text-blue-500', bg: 'bg-blue-500/10', path: '/app/brain-dump' },
+        { name: 'Calendar', value: `${upcomingEvents} Upcoming`, icon: Calendar, color: 'text-purple-500', bg: 'bg-purple-500/10', path: '/app/calendar' },
     ];
 
     return (
