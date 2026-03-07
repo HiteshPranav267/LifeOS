@@ -157,61 +157,79 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     }, []);
 
-    // 1. Auth — runs ONCE on mount, never triggers data reload
+    // 1. Auth + Session listener
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session: s } }) => {
             setSession(s);
         });
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
             setSession(s);
+
+            // When a user signs in (e.g. OAuth redirect), reload their data
+            if (event === 'SIGNED_IN' && s?.user?.id && s.user.id !== currentUserId.current) {
+                currentUserId.current = s.user.id;
+                try {
+                    const cloudData = await loadCloudData(s.user.id);
+                    if (cloudData) {
+                        setStore(cloudData);
+                        saveLocalStore(cloudData, s.user.id);
+                    } else {
+                        const localData = getLocalStore(s.user.id);
+                        setStore(localData);
+                        await saveToCloud(s.user.id, localData);
+                    }
+                } catch (e) {
+                    console.error('[LifeOS] Post-login load error:', e);
+                }
+                setIsReady(true);
+            }
         });
 
         return () => subscription.unsubscribe();
-    }, []);
+    }, [loadCloudData, saveToCloud]);
 
     // 2. Theme sync
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', store.settings.theme);
     }, [store.settings.theme]);
 
-    const lastLoadedUser = useRef<string | undefined>(undefined);
-
-    // 3. Boot & Sync 
+    // 3. Boot — runs ONCE on mount
     useEffect(() => {
+        if (hasBooted.current) return;
+        hasBooted.current = true;
+
         const boot = async () => {
-            const userId = session?.user?.id;
-
-            // Only run if the user has actually changed since the last run
-            if (userId === lastLoadedUser.current && isReady) return;
-
-            lastLoadedUser.current = userId;
-            currentUserId.current = userId;
-
             try {
+                const { data: { session: currentSession } } = await supabase.auth.getSession();
+                const userId = currentSession?.user?.id;
+                currentUserId.current = userId;
+
                 if (userId) {
                     const cloudData = await loadCloudData(userId);
                     if (cloudData) {
                         setStore(cloudData);
                         saveLocalStore(cloudData, userId);
+                        setIsCloudSynced(true);
                     } else {
                         const localData = getLocalStore(userId);
                         setStore(localData);
                         await saveToCloud(userId, localData);
+                        setIsCloudSynced(true);
                     }
                 } else {
                     setStore(getLocalStore());
                 }
             } catch (e) {
                 console.error('[LifeOS] Boot error:', e);
-            } finally {
-                setIsReady(true);
+                setStore({ ...DEFAULT_STORE });
             }
+
+            setIsReady(true);
         };
 
         boot();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session]); // ONLY re-run when the actual session changes
+    }, [loadCloudData, saveToCloud]);
 
     // 4. Persistence Engine — only reacts to STORE changes, never session changes
     useEffect(() => {
