@@ -83,7 +83,7 @@ const LoginPage: React.FC = () => {
             provider: 'google',
             options: {
                 redirectTo: isNative
-                    ? 'com.hitesh.lifeos://login'
+                    ? 'https://com.hitesh.lifeos/login'
                     : `${window.location.origin}/app`
             }
         });
