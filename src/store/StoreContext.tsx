@@ -175,20 +175,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         document.documentElement.setAttribute('data-theme', store.settings.theme);
     }, [store.settings.theme]);
 
-    const lastLoadedUser = useRef<string | null>(null);
+    const lastLoadedUser = useRef<string | undefined>(undefined);
 
-    // 3. Boot & Sync — Reactive to session changes
+    // 3. Boot & Sync 
     useEffect(() => {
         const boot = async () => {
+            const userId = session?.user?.id;
+
+            // Only run if the user has actually changed since the last run
+            if (userId === lastLoadedUser.current && isReady) return;
+
+            lastLoadedUser.current = userId;
+            currentUserId.current = userId;
+
             try {
-                const userId = session?.user?.id || null;
-
-                // If the user hasn't changed, don't trigger a full data re-load
-                if (userId === lastLoadedUser.current && isReady) return;
-
-                lastLoadedUser.current = userId;
-                currentUserId.current = userId || undefined;
-
                 if (userId) {
                     const cloudData = await loadCloudData(userId);
                     if (cloudData) {
@@ -210,7 +210,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
 
         boot();
-    }, [session, isReady, loadCloudData, saveToCloud]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [session]); // ONLY re-run when the actual session changes
 
     // 4. Persistence Engine — only reacts to STORE changes, never session changes
     useEffect(() => {
