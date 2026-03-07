@@ -53,19 +53,37 @@ const saveLocalStore = (store: Store, userId?: string) => {
 };
 
 const hydrateStore = (data: any): Store => {
-    const store = { ...DEFAULT_STORE, ...data };
-    if (!store.transactions) store.transactions = [];
-    if (!store.birthdays) store.birthdays = [];
-    if (!store.weeklyFocus) store.weeklyFocus = [];
-    if (!store.brainDumps) store.brainDumps = [];
-    if (!store.habits) store.habits = [];
-    if (!store.events) store.events = [];
-    if (!store.tasks) store.tasks = [];
-    if (!store.nutrition) store.nutrition = DEFAULT_STORE.nutrition;
-    if (store.nutrition && !store.nutrition.waterGoal) store.nutrition.waterGoal = DEFAULT_STORE.nutrition.waterGoal;
-    if (!store.fitness) store.fitness = DEFAULT_STORE.fitness;
-    if (store.fitness && !store.fitness.templates) store.fitness.templates = [];
-    if (!store.settings) store.settings = { theme: 'dark' };
+    if (!data || typeof data !== 'object') return { ...DEFAULT_STORE };
+
+    // Deep Merge with defaults to ensure no missing sub-objects crash the app
+    const store: Store = {
+        ...DEFAULT_STORE,
+        ...data,
+        settings: { ...DEFAULT_STORE.settings, ...(data.settings || {}) },
+        nutrition: { ...DEFAULT_STORE.nutrition, ...(data.nutrition || {}) },
+        fitness: { ...DEFAULT_STORE.fitness, ...(data.fitness || {}) },
+    };
+
+    // Ensure arrays are actually arrays
+    if (!Array.isArray(store.tasks)) store.tasks = [];
+    if (!Array.isArray(store.events)) store.events = [];
+    if (!Array.isArray(store.habits)) store.habits = [];
+    if (!Array.isArray(store.brainDumps)) store.brainDumps = [];
+    if (!Array.isArray(store.weeklyFocus)) store.weeklyFocus = [];
+    if (!Array.isArray(store.transactions)) store.transactions = [];
+    if (!Array.isArray(store.birthdays)) store.birthdays = [];
+
+    // Nutrition sub-arrays
+    if (!store.nutrition.weightHistory) store.nutrition.weightHistory = [];
+    if (!store.nutrition.foodLogs) store.nutrition.foodLogs = {};
+    if (!store.nutrition.waterLogs) store.nutrition.waterLogs = {};
+
+    // Fitness sub-arrays
+    if (!store.fitness.sessions) store.fitness.sessions = [];
+    if (!store.fitness.templates) store.fitness.templates = [];
+    if (!store.fitness.prs) store.fitness.prs = [];
+    if (!store.fitness.cardioLogs) store.fitness.cardioLogs = [];
+
     return store;
 };
 
@@ -199,7 +217,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                     // hasSyncedWithCloud stays null, cloud save stays LOCKED
                 }
             } catch (e) {
-                console.error('[LifeOS] Session handle error:', e);
+                console.error('[LifeOS] session init error:', e);
+                // Fallback to local data so at least the app renders
+                const localData = getLocalStore(userId);
+                setStore(localData);
             } finally {
                 if (isActive) setIsReady(true);
             }
@@ -321,9 +342,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.log('[LifeOS] Beginning robust signout...');
         setIsReady(false);
         await supabase.auth.signOut();
-        // The combined Auth effect above will handle the store reset cleaner than a manual clear
-        // but we force a reload to be 100% sure the memory is wiped
-        window.location.href = '/';
+
+        // 3. Small delay then hard redirect to ensure cookies/storage are whipped
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 1000);
     };
 
     const rescueData = (jsonString: string) => {

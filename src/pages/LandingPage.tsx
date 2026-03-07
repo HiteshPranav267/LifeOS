@@ -10,10 +10,19 @@ import {
     Calendar,
     Sparkles
 } from 'lucide-react';
+import { useStore } from '../store/StoreContext.tsx';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
+    const { session, isReady } = useStore();
     const currentYear = new Date().getFullYear();
+
+    // If user is already logged in, send them straight to the app
+    React.useEffect(() => {
+        if (isReady && session) {
+            navigate('/app');
+        }
+    }, [isReady, session, navigate]);
 
     return (
         <div className="min-h-screen bg-[#050505] text-white selection:bg-white selection:text-black flex flex-col items-center" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
