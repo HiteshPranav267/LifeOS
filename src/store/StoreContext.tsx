@@ -200,6 +200,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         hasBooted.current = true;
 
         const boot = async () => {
+            const safetyTimeout = setTimeout(() => {
+                if (!isReady) {
+                    console.warn('[LifeOS] Boot taking too long, forcing ready state');
+                    setIsReady(true);
+                }
+            }, 5000);
+
             try {
                 const { data: { session: currentSession } } = await supabase.auth.getSession();
                 const userId = currentSession?.user?.id;
@@ -223,9 +230,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             } catch (e) {
                 console.error('[LifeOS] Boot error:', e);
                 setStore({ ...DEFAULT_STORE });
+            } finally {
+                clearTimeout(safetyTimeout);
+                setIsReady(true);
             }
-
-            setIsReady(true);
         };
 
         boot();
