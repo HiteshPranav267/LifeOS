@@ -38,17 +38,7 @@ const getLocalStore = (userId?: string): Store => {
         const data = localStorage.getItem(getStorageKey(userId));
         if (!data) return { ...DEFAULT_STORE };
         const parsed = JSON.parse(data);
-        if (!parsed.transactions) parsed.transactions = [];
-        if (!parsed.birthdays) parsed.birthdays = [];
-        if (!parsed.weeklyFocus) parsed.weeklyFocus = [];
-        if (!parsed.brainDumps) parsed.brainDumps = [];
-        if (!parsed.habits) parsed.habits = [];
-        if (!parsed.events) parsed.events = [];
-        if (!parsed.tasks) parsed.tasks = [];
-        if (!parsed.nutrition) parsed.nutrition = DEFAULT_STORE.nutrition;
-        if (!parsed.fitness) parsed.fitness = DEFAULT_STORE.fitness;
-        if (!parsed.settings) parsed.settings = DEFAULT_STORE.settings;
-        return parsed;
+        return hydrateStore(parsed);
     } catch {
         return { ...DEFAULT_STORE };
     }
@@ -62,9 +52,8 @@ const saveLocalStore = (store: Store, userId?: string) => {
     }
 };
 
-// Hydrate missing fields on cloud data
 const hydrateStore = (data: any): Store => {
-    const store = data as Store;
+    const store = { ...DEFAULT_STORE, ...data };
     if (!store.transactions) store.transactions = [];
     if (!store.birthdays) store.birthdays = [];
     if (!store.weeklyFocus) store.weeklyFocus = [];
@@ -99,6 +88,7 @@ interface StoreContextType {
     setTheme: (theme: 'light' | 'dark') => void;
     forceCloudPull: () => Promise<void>;
     signOut: () => Promise<void>;
+    rescueData: (jsonString: string) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -109,17 +99,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isSaving, setIsSaving] = useState(false);
     const [isCloudSynced, setIsCloudSynced] = useState(false);
     const [isReady, setIsReady] = useState(false);
-    const hasBooted = useRef(false);
-    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const currentUserId = useRef<string | undefined>(undefined);
-    const hasSyncedWithCloud = useRef<string | null>(null); // Tracks if we've pulled for the CURRENT user
 
-    // Helper: Load data from cloud for a user
-    // Returns a discriminated result so we can tell apart "no data" from "error"
-    type CloudResult =
-        | { status: 'found'; data: Store }
-        | { status: 'new_user' }
-        | { status: 'error'; error: any };
+    // Low-level refs for sync safety
+    const currentUserId = useRef<string | undefined>(undefined);
+    const hasSyncedWithCloud = useRef<string | null>(null);
+    const lastPulledDataHash = useRef<string | null>(null);
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Helper: Load data from cloud
+    type CloudResult = { status: 'found'; data: Store } | { status: 'new_user' } | { status: 'error'; error: any };
 
     const loadCloudData = useCallback(async (userId: string): Promise<CloudResult> => {
         try {
@@ -132,27 +120,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (data && data.data) {
                 return { status: 'found', data: hydrateStore(data.data) };
             }
-
-            // PGRST116 = "no rows returned" = genuinely new user
-            if (error && error.code === 'PGRST116') {
-                return { status: 'new_user' };
-            }
-
-            // Any other error = something went wrong, do NOT treat as new user
-            if (error) {
-                console.error('[LifeOS] Cloud load error:', error);
-                return { status: 'error', error };
-            }
-
-            // Data row exists but data field is empty/null
+            if (error && error.code === 'PGRST116') return { status: 'new_user' };
+            if (error) return { status: 'error', error };
             return { status: 'new_user' };
         } catch (e) {
-            console.error('[LifeOS] Cloud load exception:', e);
             return { status: 'error', error: e };
         }
     }, []);
 
-    // Helper: Save data to cloud
     const saveToCloud = useCallback(async (userId: string, data: Store) => {
         try {
             const { error } = await supabase.from(SYNC_TABLE).upsert({
@@ -160,194 +135,211 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 data: data,
                 updated_at: new Date().toISOString()
             });
-            if (error) {
-                console.error('[LifeOS] Cloud save error:', error);
-                return false;
-            }
-            return true;
+            return !error;
         } catch (e) {
-            console.warn('[LifeOS] Cloud save failed:', e);
             return false;
         }
     }, []);
 
-    // 1. Auth + Session listener
+    // 1. Unified Session & Data Fetching Effect
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session: s } }) => {
-            setSession(s);
-        });
+        let isActive = true;
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
+        const handleAuthSession = async (s: Session | null, trigger: string) => {
+            if (!isActive) return;
+
+            const userId = s?.user?.id;
+
+            // Set session early for UI responsiveness
             setSession(s);
 
-            // When a user signs in (e.g. OAuth redirect), reload their data
-            if (event === 'SIGNED_IN' && s?.user?.id && s.user.id !== currentUserId.current) {
-                currentUserId.current = s.user.id;
-                try {
-                    const result = await loadCloudData(s.user.id);
-                    if (result.status === 'found') {
-                        setStore(result.data);
-                        saveLocalStore(result.data, s.user.id);
-                        hasSyncedWithCloud.current = s.user.id;
-                    } else if (result.status === 'new_user') {
-                        const localData = getLocalStore(s.user.id);
-                        setStore(localData);
-                        hasSyncedWithCloud.current = s.user.id;
-                    } else {
-                        // Error — load local data but do NOT unlock cloud saving
-                        const localData = getLocalStore(s.user.id);
-                        setStore(localData);
-                        console.warn('[LifeOS] Post-login cloud fetch failed, cloud saving is LOCKED');
-                    }
-                } catch (e) {
-                    console.error('[LifeOS] Post-login load error:', e);
+            // Handle Logout
+            if (!userId) {
+                if (currentUserId.current !== undefined) {
+                    console.log(`[LifeOS] ${trigger}: Logout detected.`);
+                    currentUserId.current = undefined;
+                    hasSyncedWithCloud.current = 'guest';
+                    lastPulledDataHash.current = null;
+                    setStore(getLocalStore());
                 }
                 setIsReady(true);
+                return;
             }
 
-            // When a user signs out, reset to guest state
-            if (event === 'SIGNED_OUT') {
-                currentUserId.current = undefined;
-                setStore(getLocalStore());
-                setIsCloudSynced(false);
-                setIsReady(true);
+            // If user is already set and synced, just update session and stop
+            if (userId === currentUserId.current && hasSyncedWithCloud.current === userId) {
+                return;
             }
-        });
 
-        return () => subscription.unsubscribe();
-    }, [loadCloudData, saveToCloud]);
-
-    // 2. Theme sync
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', store.settings.theme);
-    }, [store.settings.theme]);
-
-    // 3. Boot — runs ONCE on mount
-    useEffect(() => {
-        if (hasBooted.current) return;
-        hasBooted.current = true;
-
-        const boot = async () => {
-            let bootDone = false;
-            const safetyTimeout = setTimeout(() => {
-                if (!bootDone) {
-                    console.warn('[LifeOS] Boot taking too long, forcing ready state');
-                    setIsReady(true);
-                }
-            }, 5000);
+            // New user session — show loader while we pull
+            setIsReady(false);
+            console.log(`[LifeOS] ${trigger}: User ${userId} detected. Fetching cloud data...`);
+            currentUserId.current = userId;
 
             try {
-                const { data: { session: currentSession } } = await supabase.auth.getSession();
-                const userId = currentSession?.user?.id;
-                currentUserId.current = userId;
+                const result = await loadCloudData(userId);
+                if (!isActive) return;
 
-                if (userId) {
-                    const result = await loadCloudData(userId);
-
-                    if (result.status === 'found') {
-                        // Cloud data exists — use it
-                        setStore(result.data);
-                        saveLocalStore(result.data, userId);
-                        hasSyncedWithCloud.current = userId; // UNLOCK saving
-                    } else if (result.status === 'new_user') {
-                        // Genuinely new user — safe to use local data and save to cloud
-                        const localData = getLocalStore(userId);
-                        setStore(localData);
-                        hasSyncedWithCloud.current = userId; // UNLOCK saving
-                    } else {
-                        // ERROR — load local data but keep cloud saving LOCKED
-                        const localData = getLocalStore(userId);
-                        setStore(localData);
-                        console.warn('[LifeOS] Cloud fetch failed during boot, cloud saving is LOCKED');
-                        // hasSyncedWithCloud stays null — saving stays blocked
-                    }
+                if (result.status === 'found') {
+                    console.log('[LifeOS] Cloud data pulled successfully.');
+                    lastPulledDataHash.current = JSON.stringify(result.data);
+                    setStore(result.data);
+                    saveLocalStore(result.data, userId);
+                    hasSyncedWithCloud.current = userId; // UNLOCK CLOUD SAVE
+                } else if (result.status === 'new_user') {
+                    console.log('[LifeOS] New cloud user. Using local data.');
+                    const localData = getLocalStore(userId);
+                    lastPulledDataHash.current = JSON.stringify(localData);
+                    setStore(localData);
+                    hasSyncedWithCloud.current = userId; // UNLOCK CLOUD SAVE
                 } else {
-                    // Guest user - always allowed to save locally
-                    setStore(getLocalStore());
-                    hasSyncedWithCloud.current = 'guest';
+                    console.warn('[LifeOS] Cloud pull failed. Local-only mode.');
+                    const localData = getLocalStore(userId);
+                    setStore(localData);
+                    // hasSyncedWithCloud stays null, cloud save stays LOCKED
                 }
             } catch (e) {
-                console.error('[LifeOS] Boot error:', e);
-                setStore({ ...DEFAULT_STORE });
+                console.error('[LifeOS] Session handle error:', e);
             } finally {
-                bootDone = true;
-                clearTimeout(safetyTimeout);
-                setIsReady(true);
+                if (isActive) setIsReady(true);
             }
         };
 
-        boot();
-    }, [loadCloudData, saveToCloud]);
+        // Safety timeout for hangs
+        const timeout = setTimeout(() => {
+            if (!isReady && isActive) {
+                console.warn('[LifeOS] Safety timeout hit, forcing ready.');
+                setIsReady(true);
+            }
+        }, 6000);
 
-    // 4. Persistence Engine
+        // Actual auth listeners
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+            handleAuthSession(s, 'INITIAL_BOOT');
+        });
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+            handleAuthSession(s, event);
+        });
+
+        return () => {
+            isActive = false;
+            clearTimeout(timeout);
+            subscription.unsubscribe();
+        };
+    }, [loadCloudData]);
+
+    // 2. Persistence Engine (Save)
     useEffect(() => {
         if (!isReady) return;
 
         const userId = currentUserId.current;
+        const currentDataHash = JSON.stringify(store);
 
-        // CRITICAL: Prevent over-writing cloud data before we've verified what's up there
+        // Always update local cache
+        saveLocalStore(store, userId);
+
+        // Check if we should push to cloud
         const syncId = userId || 'guest';
-        if (hasSyncedWithCloud.current !== syncId) {
-            console.log('[LifeOS] Save blocked: Cloud pull not verified for this user');
+        if (hasSyncedWithCloud.current !== syncId || !userId) return;
+
+        // CRITICAL: If the current store exactly matches what we last pulled, DON'T save.
+        // This prevents the "newly logged-in device overwrites cloud with identical data" issue.
+        if (currentDataHash === lastPulledDataHash.current) {
             return;
         }
 
-        // Save locally immediately
-        saveLocalStore(store, userId);
-
-        // Debounced cloud save
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-
         setIsSaving(true);
         saveTimerRef.current = setTimeout(async () => {
-            if (userId) {
+            if (currentUserId.current === userId) {
                 const success = await saveToCloud(userId, store);
-                if (success) setIsCloudSynced(true);
+                if (success) {
+                    setIsCloudSynced(true);
+                    lastPulledDataHash.current = JSON.stringify(store);
+                }
             }
             setIsSaving(false);
-        }, 500);
+        }, 1000); // 1s debounce to be extra stable
+
+        return () => {
+            if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        };
     }, [store, isReady, saveToCloud]);
 
-    const forceCloudPull = async () => {
+    // 3. Real-time Multi-Device Sync
+    useEffect(() => {
         const userId = session?.user?.id;
         if (!userId) return;
-        const result = await loadCloudData(userId);
-        if (result.status === 'found') {
-            setStore(result.data);
-            saveLocalStore(result.data, userId);
+
+        const channel = supabase
+            .channel(`realtime:${userId}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: SYNC_TABLE,
+                filter: `id=eq.${userId}`
+            }, (payload) => {
+                const remoteStore = payload.new.data as Store;
+                if (remoteStore && JSON.stringify(remoteStore) !== JSON.stringify(store)) {
+                    console.log('[LifeOS] Real-time merge inward.');
+                    lastPulledDataHash.current = JSON.stringify(remoteStore);
+                    setStore(remoteStore);
+                    saveLocalStore(remoteStore, userId);
+                }
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, [session?.user?.id, store]);
+
+    // State updaters
+    const setTasks = (tasks: Task[]) => setStore(p => ({ ...p, tasks }));
+    const setEvents = (events: Event[]) => setStore(p => ({ ...p, events }));
+    const setHabits = (habits: Habit[]) => setStore(p => ({ ...p, habits }));
+    const setBrainDumps = (brainDumps: BrainDump[]) => setStore(p => ({ ...p, brainDumps }));
+    const setWeeklyFocus = (weeklyFocus: WeeklyFocus[]) => setStore(p => ({ ...p, weeklyFocus }));
+    const setTransactions = (transactions: Transaction[]) => setStore(p => ({ ...p, transactions }));
+    const setBirthdays = (birthdays: Birthday[]) => setStore(p => ({ ...p, birthdays }));
+    const setNutrition = (nutrition: Store['nutrition']) => setStore(p => ({ ...p, nutrition }));
+    const setFitness = (fitness: Store['fitness']) => setStore(p => ({ ...p, fitness }));
+    const setSettings = (settings: Store['settings']) => setStore(p => ({ ...p, settings }));
+    const setTheme = (theme: 'light' | 'dark') => setStore(p => ({ ...p, settings: { ...p.settings, theme } }));
+
+    const forceCloudPull = async () => {
+        if (!currentUserId.current) return;
+        const res = await loadCloudData(currentUserId.current);
+        if (res.status === 'found') {
+            setStore(res.data);
+            lastPulledDataHash.current = JSON.stringify(res.data);
+            saveLocalStore(res.data, currentUserId.current);
             setIsCloudSynced(true);
-            hasSyncedWithCloud.current = userId;
         }
     };
 
     const signOut = async () => {
-        try {
-            await supabase.auth.signOut();
-        } catch (e) {
-            console.error('[LifeOS] Signout error:', e);
-        }
-        currentUserId.current = undefined;
-        hasBooted.current = false;
-        setStore(getLocalStore());
-        // Force a clean redirect to the home page
+        console.log('[LifeOS] Beginning robust signout...');
+        setIsReady(false);
+        await supabase.auth.signOut();
+        // The combined Auth effect above will handle the store reset cleaner than a manual clear
+        // but we force a reload to be 100% sure the memory is wiped
         window.location.href = '/';
     };
 
-    const setTasks = (tasks: Task[]) => setStore(prev => ({ ...prev, tasks }));
-    const setEvents = (events: Event[]) => setStore(prev => ({ ...prev, events }));
-    const setHabits = (habits: Habit[]) => setStore(prev => ({ ...prev, habits }));
-    const setBrainDumps = (brainDumps: BrainDump[]) => setStore(prev => ({ ...prev, brainDumps }));
-    const setWeeklyFocus = (weeklyFocus: WeeklyFocus[]) => setStore(prev => ({ ...prev, weeklyFocus }));
-    const setTransactions = (transactions: Transaction[]) => setStore(prev => ({ ...prev, transactions }));
-    const setBirthdays = (birthdays: Birthday[]) => setStore(prev => ({ ...prev, birthdays }));
-    const setNutrition = (nutrition: Store['nutrition']) => setStore(prev => ({ ...prev, nutrition }));
-    const setFitness = (fitness: Store['fitness']) => setStore(prev => ({ ...prev, fitness }));
-    const setSettings = (settings: Store['settings']) => setStore(prev => ({ ...prev, settings }));
-    const setTheme = (theme: 'light' | 'dark') => setStore(prev => ({ ...prev, settings: { ...prev.settings, theme } }));
+    const rescueData = (jsonString: string) => {
+        try {
+            const data = JSON.parse(jsonString);
+            const hydrated = hydrateStore(data);
+            setStore(hydrated);
+            alert("Data injected! Navigate around to confirm, then refresh to see it save.");
+        } catch (e) {
+            alert("Invalid JSON data.");
+        }
+    };
 
     return (
         <StoreContext.Provider value={{
-            store, session, isSaving, isCloudSynced, isReady, setTasks, setEvents, setHabits, setBrainDumps, setWeeklyFocus, setTransactions, setBirthdays, setNutrition, setFitness, setSettings, setTheme, forceCloudPull, signOut
+            store, session, isSaving, isCloudSynced, isReady, setTasks, setEvents, setHabits, setBrainDumps, setWeeklyFocus, setTransactions, setBirthdays, setNutrition, setFitness, setSettings, setTheme, forceCloudPull, signOut, rescueData
         }}>
             {children}
         </StoreContext.Provider>

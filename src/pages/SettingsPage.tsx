@@ -2,8 +2,15 @@ import { useStore } from '../store/StoreContext.tsx';
 import { Sun, Moon, Database, LogOut, User, Mail } from 'lucide-react';
 
 const SettingsPage = () => {
-    const { store, setTheme, session, signOut } = useStore();
+    const { store, setTheme, session, signOut, rescueData } = useStore();
     const isDark = store.settings.theme === 'dark';
+
+    const handleImportData = () => {
+        const json = prompt("Paste your LifeOS JSON data here:");
+        if (json) {
+            rescueData(json);
+        }
+    };
 
     const handleClearData = () => {
         if (confirm("Clear local cache and reload? Your cloud data will stay safe.")) {
@@ -84,6 +91,20 @@ const SettingsPage = () => {
                 <div>
                     <span className="text-sm font-semibold block">Export Data</span>
                     <span className="text-xs text-[var(--text-secondary)]">Download a JSON backup of your data</span>
+                </div>
+            </div>
+
+            {/* Import */}
+            <div
+                onClick={handleImportData}
+                className="card cursor-pointer hover:bg-[var(--bg-elevated)] transition-all active:scale-[0.99] flex items-center gap-4 border-dashed border-blue-500/20"
+            >
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                    <Database size={22} className="text-blue-500 opacity-50" />
+                </div>
+                <div>
+                    <span className="text-sm font-semibold block">Import / Rescue Data</span>
+                    <span className="text-xs text-[var(--text-secondary)]">Paste JSON directly into the app</span>
                 </div>
             </div>
 
