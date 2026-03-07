@@ -9,15 +9,24 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Capacitor } from '@capacitor/core';
+import { useStore } from '../store/StoreContext.tsx';
+import { useEffect } from 'react';
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
+    const { session } = useStore();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+
+    useEffect(() => {
+        if (session) {
+            navigate('/app');
+        }
+    }, [session, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

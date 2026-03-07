@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   ListTodo,
@@ -170,30 +170,45 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-function App() {
+const AuthHandler = () => {
+  const navigate = useNavigate();
+
   React.useEffect(() => {
-    CapApp.addListener('appUrlOpen', async (event: any) => {
+    const handleDeepLink = async (event: any) => {
       const url = new URL(event.url);
-      // Supabase OAuth tokens are in the fragment (#...)
       if (url.hash) {
         const params = new URLSearchParams(url.hash.substring(1));
         const access_token = params.get('access_token');
         const refresh_token = params.get('refresh_token');
 
         if (access_token && refresh_token) {
-          await supabase.auth.setSession({
+          const { error } = await supabase.auth.setSession({
             access_token,
             refresh_token,
           });
+          if (!error) {
+            navigate('/app');
+          }
         }
       }
-    });
-  }, []);
+    };
+
+    const sub = CapApp.addListener('appUrlOpen', handleDeepLink);
+    return () => {
+      sub.then(s => s.remove());
+    };
+  }, [navigate]);
+
+  return null;
+};
+
+function App() {
 
   return (
     <ErrorBoundary>
       <StoreProvider>
         <Router>
+          <AuthHandler />
           <Routes>
             {/* Landing page - always accessible, no store dependency */}
             <Route path="/" element={<LandingPage />} />

@@ -175,44 +175,42 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         document.documentElement.setAttribute('data-theme', store.settings.theme);
     }, [store.settings.theme]);
 
-    // 3. Boot — runs ONCE on mount, gets its own session directly from Supabase
-    useEffect(() => {
-        if (hasBooted.current) return;
-        hasBooted.current = true;
+    const lastLoadedUser = useRef<string | null>(null);
 
+    // 3. Boot & Sync — Reactive to session changes
+    useEffect(() => {
         const boot = async () => {
             try {
-                // Get session directly from Supabase — don't rely on React state
-                const { data: { session: currentSession } } = await supabase.auth.getSession();
-                const userId = currentSession?.user?.id;
-                currentUserId.current = userId;
+                const userId = session?.user?.id || null;
+
+                // If the user hasn't changed, don't trigger a full data re-load
+                if (userId === lastLoadedUser.current && isReady) return;
+
+                lastLoadedUser.current = userId;
+                currentUserId.current = userId || undefined;
 
                 if (userId) {
                     const cloudData = await loadCloudData(userId);
-
                     if (cloudData) {
                         setStore(cloudData);
                         saveLocalStore(cloudData, userId);
-                        setIsCloudSynced(true);
                     } else {
                         const localData = getLocalStore(userId);
                         setStore(localData);
                         await saveToCloud(userId, localData);
-                        setIsCloudSynced(true);
                     }
                 } else {
                     setStore(getLocalStore());
                 }
             } catch (e) {
                 console.error('[LifeOS] Boot error:', e);
-                setStore({ ...DEFAULT_STORE });
+            } finally {
+                setIsReady(true);
             }
-
-            setIsReady(true);
         };
 
         boot();
-    }, [loadCloudData, saveToCloud]);
+    }, [session, isReady, loadCloudData, saveToCloud]);
 
     // 4. Persistence Engine — only reacts to STORE changes, never session changes
     useEffect(() => {
