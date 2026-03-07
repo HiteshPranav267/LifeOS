@@ -280,12 +280,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const signOut = async () => {
-        setIsReady(false);
         await supabase.auth.signOut();
         currentUserId.current = undefined;
         hasBooted.current = false;
         setStore(getLocalStore());
-        window.location.href = '/';
+        // Use replace for a cleaner transition that doesn't mess with history
+        window.location.replace('/');
     };
 
     const setTasks = (tasks: Task[]) => setStore(prev => ({ ...prev, tasks }));
