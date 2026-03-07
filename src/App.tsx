@@ -15,6 +15,8 @@ import {
   Dumbbell
 } from 'lucide-react';
 import { nativeHaptic } from './utils/native';
+import { App as CapApp } from '@capacitor/app';
+import { supabase } from './lib/supabase';
 
 import DashboardPage from './pages/DashboardPage';
 import TasksPage from './pages/TasksPage';
@@ -169,6 +171,25 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+  React.useEffect(() => {
+    CapApp.addListener('appUrlOpen', async (event: any) => {
+      const url = new URL(event.url);
+      // Supabase OAuth tokens are in the fragment (#...)
+      if (url.hash) {
+        const params = new URLSearchParams(url.hash.substring(1));
+        const access_token = params.get('access_token');
+        const refresh_token = params.get('refresh_token');
+
+        if (access_token && refresh_token) {
+          await supabase.auth.setSession({
+            access_token,
+            refresh_token,
+          });
+        }
+      }
+    });
+  }, []);
+
   return (
     <ErrorBoundary>
       <StoreProvider>

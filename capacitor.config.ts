@@ -17,6 +17,10 @@ const config: CapacitorConfig = {
       style: "DARK",
       backgroundColor: "#050505",
     }
+  },
+  server: {
+    iosScheme: "com.hitesh.lifeos",
+    androidScheme: "com.hitesh.lifeos"
   }
 };
 

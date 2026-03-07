@@ -8,6 +8,7 @@ import {
     Layers
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { Capacitor } from '@capacitor/core';
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
@@ -68,10 +69,13 @@ const LoginPage: React.FC = () => {
     };
 
     const handleGoogleAuth = async () => {
+        const isNative = Capacitor.isNativePlatform();
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: `${window.location.origin}/app`
+                redirectTo: isNative
+                    ? 'com.hitesh.lifeos://login'
+                    : `${window.location.origin}/app`
             }
         });
         if (error) setError(error.message);
