@@ -19,8 +19,9 @@ const config: CapacitorConfig = {
     }
   },
   server: {
-    iosScheme: "com.hitesh.lifeos",
-    androidScheme: "com.hitesh.lifeos"
+    iosScheme: "https",
+    androidScheme: "https",
+    hostname: "com.hitesh.lifeos"
   }
 };
 

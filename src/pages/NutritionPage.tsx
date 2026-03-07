@@ -115,6 +115,11 @@ const NutritionPage = () => {
         setNutrition({ ...nutrition, waterLogs: newWaterLogs });
     };
 
+    const resetWater = () => {
+        const newWaterLogs = { ...nutrition.waterLogs, [selectedDate]: 0 };
+        setNutrition({ ...nutrition, waterLogs: newWaterLogs });
+    };
+
     const handleSearch = async () => {
         if (!searchQuery.trim()) return;
         setIsSearching(true);
@@ -335,6 +340,14 @@ const NutritionPage = () => {
                             <Plus size={18} /> Add
                         </button>
                     </div>
+                    {todayWater > 0 && (
+                        <button
+                            onClick={resetWater}
+                            className="text-[10px] uppercase font-bold text-red-500 tracking-widest self-center hover:opacity-80 transition-opacity"
+                        >
+                            Clear all
+                        </button>
+                    )}
                 </div>
             </section>
 
