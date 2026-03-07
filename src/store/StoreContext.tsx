@@ -112,6 +112,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const hasBooted = useRef(false);
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const currentUserId = useRef<string | undefined>(undefined);
+    const hasSyncedWithCloud = useRef<string | null>(null); // Tracks if we've pulled for the CURRENT user
 
     // Helper: Load data from cloud for a user
     const loadCloudData = useCallback(async (userId: string): Promise<Store | null> => {
@@ -222,19 +223,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 currentUserId.current = userId;
 
                 if (userId) {
+                    // 1. DONT set isReady yet - we need to pull first
                     const cloudData = await loadCloudData(userId);
+
                     if (cloudData) {
+                        // Success: We have cloud data. Pull it.
                         setStore(cloudData);
                         saveLocalStore(cloudData, userId);
-                        setIsCloudSynced(true);
+                        hasSyncedWithCloud.current = userId; // UNLOCK saving for this user
                     } else {
+                        // Case: No data found OR error. 
+                        // We check if it was a true "New User" (PGRST116) in loadCloudData
                         const localData = getLocalStore(userId);
                         setStore(localData);
-                        await saveToCloud(userId, localData);
-                        setIsCloudSynced(true);
+                        // We only unlock saving if we are confident we aren't about to overwrite
+                        hasSyncedWithCloud.current = userId;
                     }
                 } else {
+                    // Guest user - always allowed to save locally
                     setStore(getLocalStore());
+                    hasSyncedWithCloud.current = 'guest';
                 }
             } catch (e) {
                 console.error('[LifeOS] Boot error:', e);
@@ -249,11 +257,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         boot();
     }, [loadCloudData, saveToCloud]);
 
-    // 4. Persistence Engine — only reacts to STORE changes, never session changes
+    // 4. Persistence Engine
     useEffect(() => {
         if (!isReady) return;
 
         const userId = currentUserId.current;
+
+        // CRITICAL: Prevent over-writing cloud data before we've verified what's up there
+        const syncId = userId || 'guest';
+        if (hasSyncedWithCloud.current !== syncId) {
+            console.log('[LifeOS] Save blocked: Cloud pull not verified for this user');
+            return;
+        }
 
         // Save locally immediately
         saveLocalStore(store, userId);
