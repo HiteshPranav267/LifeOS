@@ -184,6 +184,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 }
                 setIsReady(true);
             }
+
+            // When a user signs out, reset to guest state
+            if (event === 'SIGNED_OUT') {
+                currentUserId.current = undefined;
+                setStore(getLocalStore());
+                setIsCloudSynced(false);
+            }
         });
 
         return () => subscription.unsubscribe();
@@ -273,10 +280,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const signOut = async () => {
+        setIsReady(false);
         await supabase.auth.signOut();
-        hasBooted.current = false; // Allow re-boot on next login
         currentUserId.current = undefined;
-        window.location.replace('/');
+        hasBooted.current = false;
+        setStore(getLocalStore());
+        window.location.href = '/';
     };
 
     const setTasks = (tasks: Task[]) => setStore(prev => ({ ...prev, tasks }));
