@@ -9,6 +9,28 @@ const DEFAULT_STORE: Store = {
     brainDumps: [],
     weeklyFocus: [],
     transactions: [],
+    birthdays: [],
+    nutrition: {
+        metrics: {
+            height: 175,
+            weight: 70,
+            age: 25,
+            activityLevel: 'moderately active',
+            lastUpdated: new Date().toISOString()
+        },
+        weightHistory: [],
+        foodLogs: {},
+        waterLogs: {},
+        waterGoal: 2000,
+        streak: 0
+    },
+    fitness: {
+        sessions: [],
+        templates: [],
+        prs: [],
+        cardioLogs: [],
+        streak: 0
+    },
     settings: {
         theme: 'dark',
     },
@@ -114,6 +136,9 @@ export const getStore = (): Store => {
         if (!parsed.events) parsed.events = [];
         if (!parsed.tasks) parsed.tasks = [];
         if (!parsed.settings) parsed.settings = DEFAULT_STORE.settings;
+        if (!parsed.birthdays) parsed.birthdays = DEFAULT_STORE.birthdays;
+        if (!parsed.nutrition) parsed.nutrition = DEFAULT_STORE.nutrition;
+        if (!parsed.fitness) parsed.fitness = DEFAULT_STORE.fitness;
 
         return parsed;
     } catch (err) {

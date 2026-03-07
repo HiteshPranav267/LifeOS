@@ -14,6 +14,7 @@ import {
   Apple,
   Dumbbell
 } from 'lucide-react';
+import { nativeHaptic } from './utils/native';
 
 import DashboardPage from './pages/DashboardPage';
 import TasksPage from './pages/TasksPage';
@@ -96,6 +97,7 @@ const BottomNav = () => {
         <NavLink
           key={item.path}
           to={item.path}
+          onClick={() => nativeHaptic()}
           className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
         >
           {({ isActive }) => (

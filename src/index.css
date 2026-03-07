@@ -29,6 +29,11 @@ body {
   letter-spacing: -0.012em;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  /* Prevent pull-to-refresh and bounce on mobile */
+  overscroll-behavior: none;
+  /* Prevent text selection and long-press menus */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* App Layout */
@@ -40,11 +45,11 @@ body {
 }
 
 .top-bar {
-  height: 64px;
+  height: calc(64px + env(safe-area-inset-top));
   display: flex;
-  align-items: center;
+  align-items: flex-end; /* Push content to bottom of expanded bar */
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 24px 12px 24px;
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -58,7 +63,7 @@ body {
 }
 
 .main-content {
-  padding: 40px 24px 120px 24px;
+  padding: 24px 24px calc(120px + env(safe-area-inset-bottom)) 24px;
   max-width: 800px;
   margin: 0 auto;
 }

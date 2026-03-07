@@ -15,6 +15,8 @@ import {
     Layout,
     ArrowRight
 } from 'lucide-react';
+import { nativeHaptic } from '../utils/native';
+import { ImpactStyle } from '@capacitor/haptics';
 import type { LoggedExercise, WorkoutSession, CardioEntry, Exercise, WorkoutSet } from '../types';
 
 const EXERCISEDB_BASE = 'https://exercisedb.dev/api/v1';
@@ -130,11 +132,14 @@ const FitnessPage = () => {
                             const newSet = { ...set, ...updates };
 
                             if (updates.completed) {
+                                nativeHaptic(ImpactStyle.Medium);
                                 setRestTime(60);
                                 const volume = newSet.weight * newSet.reps;
                                 const existingPR = fitness.prs.find(p => p.exerciseId === ex.id);
                                 if (!existingPR || volume > (existingPR.maxWeight * existingPR.maxReps)) {
                                     newSet.isPR = true;
+                                    nativeHaptic(ImpactStyle.Heavy);
+                                    setTimeout(() => nativeHaptic(ImpactStyle.Heavy), 150);
                                 }
                             }
                             return newSet;
