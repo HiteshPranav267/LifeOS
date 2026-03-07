@@ -10,8 +10,8 @@ import {
     Trophy,
     Calendar,
     ChevronRight,
+    ChevronLeft,
     Heart,
-    Flame,
     Layout,
     ArrowRight
 } from 'lucide-react';
@@ -32,9 +32,16 @@ const FitnessPage = () => {
     const timerRef = useRef<any>(null);
 
     const fitness = store.fitness;
-    const today = new Date().toISOString().split('T')[0];
-    const todaySession = fitness.sessions.find(s => s.date === today && !s.isTemplate);
-    const cardioLogs = fitness.cardioLogs.filter(c => c.date === today);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const [selectedDate, setSelectedDate] = useState(todayStr);
+
+    const activeSession = useMemo(() =>
+        fitness.sessions.find(s => s.date === selectedDate && !s.isTemplate),
+        [fitness.sessions, selectedDate]);
+
+    const cardioLogs = useMemo(() =>
+        fitness.cardioLogs.filter(c => c.date === selectedDate),
+        [fitness.cardioLogs, selectedDate]);
 
     // Rest Timer Logic
     useEffect(() => {
@@ -89,15 +96,15 @@ const FitnessPage = () => {
             sets: [{ id: crypto.randomUUID(), reps: 0, weight: 0, completed: false, isPR: false }]
         };
 
-        if (todaySession) {
+        if (activeSession) {
             const newSessions = fitness.sessions.map(s =>
-                s.id === todaySession.id ? { ...s, exercises: [...s.exercises, newLoggedEx] } : s
+                s.id === activeSession.id ? { ...s, exercises: [...s.exercises, newLoggedEx] } : s
             );
             setFitness({ ...fitness, sessions: newSessions });
         } else {
             const newSession: WorkoutSession = {
                 id: crypto.randomUUID(),
-                date: today,
+                date: selectedDate,
                 exercises: [newLoggedEx],
                 isTemplate: false
             };
@@ -108,10 +115,10 @@ const FitnessPage = () => {
     };
 
     const updateSet = (exerciseInstanceId: string, setId: string, updates: Partial<WorkoutSet>) => {
-        if (!todaySession) return;
+        if (!activeSession) return;
 
         const newSessions = fitness.sessions.map(s => {
-            if (s.id !== todaySession.id) return s;
+            if (s.id !== activeSession.id) return s;
             return {
                 ...s,
                 exercises: s.exercises.map(ex => {
@@ -122,14 +129,12 @@ const FitnessPage = () => {
                             if (set.id !== setId) return set;
                             const newSet = { ...set, ...updates };
 
-                            // Check for PR if completing a set
                             if (updates.completed) {
-                                setRestTime(60); // Start 60s timer
+                                setRestTime(60);
                                 const volume = newSet.weight * newSet.reps;
                                 const existingPR = fitness.prs.find(p => p.exerciseId === ex.id);
                                 if (!existingPR || volume > (existingPR.maxWeight * existingPR.maxReps)) {
                                     newSet.isPR = true;
-                                    // PR update logic handled in final state update for simplicity or separate function
                                 }
                             }
                             return newSet;
@@ -139,10 +144,9 @@ const FitnessPage = () => {
             };
         });
 
-        // If a PR was hit, we need to update the PRs array too
         let updatedPRs = [...fitness.prs];
         newSessions.forEach(s => {
-            if (s.id === todaySession.id) {
+            if (s.id === activeSession.id) {
                 s.exercises.forEach(ex => {
                     ex.sets.forEach(set => {
                         if (set.isPR && set.completed) {
@@ -154,7 +158,7 @@ const FitnessPage = () => {
                                 maxWeight: set.weight,
                                 maxReps: set.reps,
                                 oneRepMax: Math.round(set.weight * (1 + set.reps / 30)),
-                                date: today
+                                date: selectedDate
                             };
                             if (existingIdx > -1) {
                                 if (volume > (updatedPRs[existingIdx].maxWeight * updatedPRs[existingIdx].maxReps)) {
@@ -172,49 +176,69 @@ const FitnessPage = () => {
         setFitness({ ...fitness, sessions: newSessions, prs: updatedPRs });
     };
 
-    const addSet = (exerciseInstanceId: string) => {
-        if (!todaySession) return;
-        const newSessions = fitness.sessions.map(s => {
-            if (s.id !== todaySession.id) return s;
-            return {
-                ...s,
-                exercises: s.exercises.map(ex => {
-                    if (ex.instanceId !== exerciseInstanceId) return ex;
-                    const lastSet = ex.sets[ex.sets.length - 1];
-                    return {
-                        ...ex,
-                        sets: [...ex.sets, {
-                            id: crypto.randomUUID(),
-                            reps: lastSet?.reps || 0,
-                            weight: lastSet?.weight || 0,
-                            completed: false,
-                            isPR: false
-                        }]
-                    };
-                })
-            };
-        });
-        setFitness({ ...fitness, sessions: newSessions });
-    };
-
     const removeExercise = (instanceId: string) => {
-        if (!todaySession) return;
+        if (!activeSession) return;
         const newSessions = fitness.sessions.map(s =>
-            s.id === todaySession.id ? { ...s, exercises: s.exercises.filter(ex => ex.instanceId !== instanceId) } : s
+            s.id === activeSession.id ? { ...s, exercises: s.exercises.filter(ex => ex.instanceId !== instanceId) } : s
         );
         setFitness({ ...fitness, sessions: newSessions });
     };
 
+    const addSet = (exerciseInstanceId: string) => {
+        if (!activeSession) return;
+        const newSessions = fitness.sessions.map(s => {
+            if (s.id === activeSession.id) {
+                return {
+                    ...s,
+                    exercises: s.exercises.map(ex => {
+                        if (ex.instanceId !== exerciseInstanceId) return ex;
+                        const lastSet = ex.sets[ex.sets.length - 1];
+                        return {
+                            ...ex,
+                            sets: [...ex.sets, {
+                                id: crypto.randomUUID(),
+                                reps: lastSet?.reps || 0,
+                                weight: lastSet?.weight || 0,
+                                completed: false,
+                                isPR: false
+                            }]
+                        };
+                    })
+                };
+            }
+            return s;
+        });
+        setFitness({ ...fitness, sessions: newSessions });
+    };
+
+    const deleteSet = (exerciseInstanceId: string, setId: string) => {
+        if (!activeSession) return;
+        const newSessions = fitness.sessions.map(s => {
+            if (s.id === activeSession.id) {
+                return {
+                    ...s,
+                    exercises: s.exercises.map(ex =>
+                        ex.instanceId === exerciseInstanceId
+                            ? { ...ex, sets: ex.sets.filter(set => set.id !== setId) }
+                            : ex
+                    )
+                };
+            }
+            return s;
+        });
+        setFitness({ ...fitness, sessions: newSessions });
+    };
+
     const saveAsTemplate = () => {
-        if (!todaySession || !templateName) return;
+        if (!activeSession || !templateName.trim()) return;
         const template: WorkoutSession = {
-            ...todaySession,
+            ...activeSession,
             id: crypto.randomUUID(),
+            date: selectedDate,
             isTemplate: true,
-            templateName,
-            date: ''
+            templateName: templateName.trim()
         };
-        setFitness({ ...fitness, templates: [...(fitness as any).templates || [], template] });
+        setFitness({ ...fitness, sessions: [...fitness.sessions, template] });
         setIsSavingTemplate(false);
         setTemplateName('');
     };
@@ -223,7 +247,7 @@ const FitnessPage = () => {
         const newSession: WorkoutSession = {
             ...template,
             id: crypto.randomUUID(),
-            date: today,
+            date: selectedDate,
             isTemplate: false,
             exercises: template.exercises.map(ex => ({
                 ...ex,
@@ -234,22 +258,25 @@ const FitnessPage = () => {
         setFitness({ ...fitness, sessions: [...fitness.sessions, newSession] });
     };
 
-    const handleSaveCardio = () => {
-        const mets = { run: 10, cycle: 8, swim: 7, walk: 3.5 };
-        const weight = store.nutrition.metrics.weight || 70;
-        const calories = Math.round(mets[cardioForm.type as keyof typeof mets] * weight * (cardioForm.duration / 60));
-
-        const newEntry: CardioEntry = {
+    const addCardio = () => {
+        if (!cardioForm.duration) return;
+        const entry: CardioEntry = {
             id: crypto.randomUUID(),
-            ...cardioForm,
             type: cardioForm.type as any,
-            calories,
-            date: today
+            duration: cardioForm.duration,
+            distance: cardioForm.distance,
+            calories: Math.round(cardioForm.duration * 8), // Rough estimate
+            date: selectedDate
         };
-
-        setFitness({ ...fitness, cardioLogs: [...fitness.cardioLogs, newEntry] });
+        setFitness({ ...fitness, cardioLogs: [...fitness.cardioLogs, entry] });
         setIsAddingCardio(false);
         setCardioForm({ type: 'run', duration: 0, distance: 0 });
+    };
+
+    const changeDate = (days: number) => {
+        const d = new Date(selectedDate);
+        d.setDate(d.getDate() + days);
+        setSelectedDate(d.toISOString().split('T')[0]);
     };
 
     const deleteCardio = (id: string) => {
@@ -270,27 +297,53 @@ const FitnessPage = () => {
 
     const volumeByMuscle = useMemo(() => {
         const volume: Record<string, number> = {};
-        todaySession?.exercises.forEach(ex => {
+        activeSession?.exercises.forEach(ex => {
             const exVol = ex.sets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
             volume[ex.bodyPart] = (volume[ex.bodyPart] || 0) + exVol;
         });
         return volume;
-    }, [todaySession]);
+    }, [activeSession]);
 
     return (
         <div className="flex flex-col gap-10 max-w-2xl mx-auto pb-32">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-[var(--text-secondary)]">Strength & Vitality</span>
+                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-[var(--text-secondary)]">Form & Fire</span>
                     <h1 className="text-3xl font-bold mt-2">Fitness.</h1>
                 </div>
-                <div className="flex flex-col items-end">
-                    <div className="flex items-center gap-2 text-red-500">
-                        <Flame size={18} fill="currentColor" />
-                        <span className="font-bold text-xl">{fitness.streak}</span>
+
+                <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-3 bg-[var(--bg-elevated)] p-1.5 rounded-2xl border border-[var(--border)]">
+                        <button
+                            onClick={() => changeDate(-1)}
+                            className="w-10 h-10 rounded-xl hover:bg-[var(--bg-primary)] flex items-center justify-center transition-colors"
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
+                        <div className="flex flex-col items-center px-4 min-w-[120px]">
+                            <span className="text-[9px] uppercase font-bold tracking-widest text-[var(--text-secondary)]">
+                                {selectedDate === todayStr ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' })}
+                            </span>
+                            <span className="text-sm font-bold">
+                                {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => changeDate(1)}
+                            className="w-10 h-10 rounded-xl hover:bg-[var(--bg-primary)] flex items-center justify-center transition-colors"
+                        >
+                            <ChevronRight size={18} />
+                        </button>
                     </div>
-                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest">Day Streak</span>
+                    {selectedDate !== todayStr && (
+                        <button
+                            onClick={() => setSelectedDate(todayStr)}
+                            className="text-[10px] font-bold text-blue-500 hover:text-blue-600 mr-2"
+                        >
+                            Back to Today
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -385,8 +438,8 @@ const FitnessPage = () => {
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-3">
                         <span className="section-label m-0">Dynamic Workout</span>
-                        {todaySession && (
-                            <button onClick={() => setIsSavingTemplate(true)} className="p-2 text-[var(--text-secondary)] hover:text-red-500 transition-colors">
+                        {activeSession && (
+                            <button onClick={saveAsTemplate} className="p-2 text-[var(--text-secondary)] hover:text-red-500 transition-colors">
                                 <Layout size={18} />
                             </button>
                         )}
@@ -441,7 +494,7 @@ const FitnessPage = () => {
 
                 {/* Workout List */}
                 <div className="flex flex-col gap-6">
-                    {todaySession && todaySession.exercises.length > 0 ? todaySession.exercises.map((ex) => (
+                    {activeSession && activeSession.exercises.length > 0 ? activeSession.exercises.map((ex) => (
                         <div key={ex.instanceId} className="card p-6 flex flex-col gap-6 group">
                             <div className="flex justify-between items-start">
                                 <div className="flex items-center gap-4">
@@ -467,8 +520,16 @@ const FitnessPage = () => {
                                 </div>
                                 {ex.sets.map((set, idx) => (
                                     <div key={set.id} className={`grid grid-cols-4 gap-4 items-center transition-opacity ${set.completed ? 'opacity-40 grayscale' : 'opacity-100'}`}>
-                                        <div className="flex items-center justify-center font-black text-xs text-[var(--text-secondary)]">
-                                            {idx + 1}
+                                        <div className="flex items-center justify-center gap-1 group/set">
+                                            <button
+                                                onClick={() => deleteSet(ex.instanceId, set.id)}
+                                                className="opacity-0 group-hover/set:opacity-100 p-1 text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                                            >
+                                                <Trash2 size={12} />
+                                            </button>
+                                            <span className="font-black text-xs text-[var(--text-secondary)]">
+                                                {idx + 1}
+                                            </span>
                                         </div>
                                         <div className="text-center text-xs font-bold text-[var(--text-secondary)] italic">
                                             —
@@ -663,7 +724,7 @@ const FitnessPage = () => {
                             <div className="flex gap-4 pt-4">
                                 <button
                                     className="flex-1 h-12 bg-red-500 text-white rounded-xl font-bold active:scale-95 transition-transform shadow-lg shadow-red-500/20"
-                                    onClick={handleSaveCardio}
+                                    onClick={addCardio}
                                 >
                                     Commit Metric
                                 </button>

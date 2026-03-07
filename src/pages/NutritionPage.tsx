@@ -8,7 +8,6 @@ import {
     Search,
     ChevronRight,
     ChevronDown,
-    Flame,
     Trash2,
     Clock,
     Info,
@@ -16,7 +15,8 @@ import {
     TrendingUp,
     Settings as SettingsIcon,
     Edit2,
-    Mail
+    Mail,
+    ChevronLeft
 } from 'lucide-react';
 import {
     LineChart,
@@ -34,10 +34,7 @@ const CALORIENINJAS_KEY = 'uaNfMe0h4Uru/HgouNAPfQ==fOkJonefRPHoBT8R';
 const NutritionPage = () => {
     const { store, setNutrition } = useStore();
     const nutrition = store.nutrition;
-    const today = new Date().toISOString().split('T')[0];
-    const todayLogs = nutrition.foodLogs[today] || [];
-    const todayWater = nutrition.waterLogs[today] || 0;
-
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [tempWaterGoal, setTempWaterGoal] = useState(nutrition.waterGoal || 2500);
     const [customWaterAmount, setCustomWaterAmount] = useState<number>(250);
@@ -47,14 +44,20 @@ const NutritionPage = () => {
     const [isSearching, setIsSearching] = useState(false);
     const [mealType, setMealType] = useState<FoodEntry['mealType']>('Breakfast');
     const [isAddingCustom, setIsAddingCustom] = useState(false);
+    const [isEditingMetrics, setIsEditingMetrics] = useState(false);
+    const [tempMetrics, setTempMetrics] = useState(nutrition.metrics);
     const [customFood, setCustomFood] = useState({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayLogs = nutrition.foodLogs[selectedDate] || [];
+    const todayWater = nutrition.waterLogs[selectedDate] || 0;
 
     const apiKey = CALORIENINJAS_KEY;
 
     const updateFood = (id: string, updates: Partial<FoodEntry>) => {
         const currentLogs = { ...nutrition.foodLogs };
-        if (currentLogs[today]) {
-            currentLogs[today] = currentLogs[today].map(f => f.id === id ? { ...f, ...updates } : f);
+        if (currentLogs[selectedDate]) {
+            currentLogs[selectedDate] = currentLogs[selectedDate].map(f => f.id === id ? { ...f, ...updates } : f);
             setNutrition({ ...nutrition, foodLogs: currentLogs });
         }
         setEditingFood(null);
@@ -76,29 +79,39 @@ const NutritionPage = () => {
         fat: acc.fat + curr.fat,
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-    const updateMetrics = (field: keyof BodyMetrics, value: any) => {
-        const numValue = Number(value);
-        const newMetrics = { ...nutrition.metrics, [field]: numValue, lastUpdated: new Date().toISOString() };
-
+    const saveMetrics = () => {
         let newWeightHistory = [...nutrition.weightHistory];
-        if (field === 'weight') {
-            const todayStr = new Date().toISOString().split('T')[0];
-            // Overwrite or create today's single entry
-            const existingIndex = newWeightHistory.findIndex(entry => entry.date.startsWith(todayStr));
-            if (existingIndex >= 0) {
-                newWeightHistory[existingIndex] = { ...newWeightHistory[existingIndex], weight: numValue };
-            } else {
-                newWeightHistory.push({ id: crypto.randomUUID(), weight: numValue, date: new Date().toISOString() });
-            }
-            newWeightHistory = newWeightHistory.slice(-30);
+        const existingIndex = newWeightHistory.findIndex(entry => entry.date.startsWith(selectedDate));
+
+        if (existingIndex >= 0) {
+            newWeightHistory[existingIndex] = { ...newWeightHistory[existingIndex], weight: tempMetrics.weight };
+        } else {
+            newWeightHistory.push({
+                id: crypto.randomUUID(),
+                weight: tempMetrics.weight,
+                date: selectedDate === todayStr ? new Date().toISOString() : `${selectedDate}T12:00:00.000Z`
+            });
         }
 
+        newWeightHistory.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        newWeightHistory = newWeightHistory.slice(-100); // Store more history
+
+        const isLatestOrNewer = !nutrition.weightHistory.some(h => h.date.split('T')[0] > selectedDate);
+        const finalGlobalWeight = isLatestOrNewer ? tempMetrics.weight : nutrition.metrics.weight;
+
+        const newMetrics = {
+            ...tempMetrics,
+            weight: finalGlobalWeight,
+            lastUpdated: new Date().toISOString()
+        };
+
         setNutrition({ ...nutrition, metrics: newMetrics, weightHistory: newWeightHistory });
+        setIsEditingMetrics(false);
     };
 
     const addWater = (amount?: number) => {
         const mlToAdd = amount || customWaterAmount || 250;
-        const newWaterLogs = { ...nutrition.waterLogs, [today]: todayWater + mlToAdd };
+        const newWaterLogs = { ...nutrition.waterLogs, [selectedDate]: todayWater + mlToAdd };
         setNutrition({ ...nutrition, waterLogs: newWaterLogs });
     };
 
@@ -121,7 +134,7 @@ const NutritionPage = () => {
                     servingQty: food.serving_size_g,
                     servingUnit: 'g',
                     mealType,
-                    date: today
+                    date: selectedDate
                 }));
                 setSearchResults(results);
                 // Don't clear searchQuery here yet, so we can use it for "Merge & Add" name
@@ -134,42 +147,57 @@ const NutritionPage = () => {
     };
 
     const addCustomFood = () => {
-        if (!customFood.name) return;
-        const newEntry: FoodEntry = {
+        if (!customFood.name || !customFood.calories) return;
+        const logEntry: FoodEntry = {
             id: crypto.randomUUID(),
-            ...customFood,
+            name: customFood.name,
+            calories: customFood.calories,
+            protein: customFood.protein,
+            carbs: customFood.carbs,
+            fat: customFood.fat,
             servingQty: 1,
             servingUnit: 'portion',
             mealType,
-            date: today
+            date: selectedDate
         };
-        const newLogs = { ...nutrition.foodLogs, [today]: [...todayLogs, newEntry] };
+        const newLogs = { ...nutrition.foodLogs, [selectedDate]: [...(nutrition.foodLogs[selectedDate] || []), logEntry] };
         setNutrition({ ...nutrition, foodLogs: newLogs });
         setCustomFood({ name: '', calories: 0, protein: 0, carbs: 0, fat: 0 });
         setIsAddingCustom(false);
     };
 
     const addFood = (food: FoodEntry) => {
-        const currentLogs = { ...nutrition.foodLogs };
-        currentLogs[today] = [...(currentLogs[today] || []), food];
-        setNutrition({ ...nutrition, foodLogs: currentLogs });
+        const logEntry: FoodEntry = { ...food, id: crypto.randomUUID(), mealType, date: selectedDate };
+        const newLogs = { ...nutrition.foodLogs, [selectedDate]: [...(nutrition.foodLogs[selectedDate] || []), logEntry] };
+        setNutrition({ ...nutrition, foodLogs: newLogs });
         setSearchResults(prev => prev.filter(p => p.id !== food.id));
         if (searchResults.length <= 1) setSearchQuery(''); // Clear query if last item added
     };
 
     const deleteFood = (id: string) => {
-        const newLogs = { ...nutrition.foodLogs, [today]: todayLogs.filter(f => f.id !== id) };
+        const newLogs = { ...nutrition.foodLogs, [selectedDate]: (nutrition.foodLogs[selectedDate] || []).filter(f => f.id !== id) };
         setNutrition({ ...nutrition, foodLogs: newLogs });
     };
 
+    const changeDate = (days: number) => {
+        const d = new Date(selectedDate);
+        d.setDate(d.getDate() + days);
+        setSelectedDate(d.toISOString().split('T')[0]);
+    };
+
+    const selectedWeight = useMemo(() => {
+        const historyEntry = nutrition.weightHistory.find(h => h.date.startsWith(selectedDate));
+        return historyEntry ? historyEntry.weight : nutrition.metrics.weight;
+    }, [nutrition.weightHistory, selectedDate, nutrition.metrics.weight]);
+
     const bmi = useMemo(() => {
-        if (!nutrition.metrics.height || !nutrition.metrics.weight) return 0;
+        if (!nutrition.metrics.height || !selectedWeight) return 0;
         const hInMeters = nutrition.metrics.height / 100;
-        return (nutrition.metrics.weight / (hInMeters * hInMeters)).toFixed(1);
-    }, [nutrition.metrics]);
+        return (selectedWeight / (hInMeters * hInMeters)).toFixed(1);
+    }, [nutrition.metrics.height, selectedWeight]);
 
     const weightData = useMemo(() => {
-        // Deduplicate existing history: Keep only the latest entry for each distinct date
+        const hInMeters = nutrition.metrics.height / 100;
         const dailyLatest: Record<string, any> = {};
         nutrition.weightHistory.forEach(entry => {
             const dateStr = entry.date.split('T')[0];
@@ -180,32 +208,59 @@ const NutritionPage = () => {
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
             .map(entry => ({
                 date: new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                weight: entry.weight
+                weight: entry.weight,
+                bmi: hInMeters > 0 ? (entry.weight / (hInMeters * hInMeters)).toFixed(1) : 0
             }));
-    }, [nutrition.weightHistory]);
+    }, [nutrition.weightHistory, nutrition.metrics.height]);
 
     return (
         <div className="flex flex-col gap-10 max-w-2xl mx-auto pb-24">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div>
-                        <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-[var(--text-secondary)]">Fuel & Form</span>
+                <div>
+                    <span className="text-[11px] uppercase tracking-[0.4em] font-bold text-[var(--text-secondary)]">Fuel & Form</span>
+                    <div className="flex items-center gap-4">
                         <h1 className="text-3xl font-bold mt-2">Nutrition.</h1>
+                        <button
+                            onClick={() => setIsConfigOpen(true)}
+                            className="p-2 mt-2 text-[var(--text-secondary)] hover:text-blue-500 transition-colors"
+                        >
+                            <SettingsIcon size={20} />
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setIsConfigOpen(true)}
-                        className="p-2 mt-6 rounded-full bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-blue-500 transition-all active:scale-95"
-                    >
-                        <SettingsIcon size={16} />
-                    </button>
                 </div>
-                <div className="flex flex-col items-end">
-                    <div className="flex items-center gap-2 text-orange-500">
-                        <Flame size={18} fill="currentColor" />
-                        <span className="font-bold text-xl">{nutrition.streak}</span>
+
+                <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-3 bg-[var(--bg-elevated)] p-1.5 rounded-2xl border border-[var(--border)]">
+                        <button
+                            onClick={() => changeDate(-1)}
+                            className="w-10 h-10 rounded-xl hover:bg-[var(--bg-primary)] flex items-center justify-center transition-colors"
+                        >
+                            <ChevronLeft size={18} />
+                        </button>
+                        <div className="flex flex-col items-center px-4 min-w-[120px]">
+                            <span className="text-[9px] uppercase font-bold tracking-widest text-[var(--text-secondary)]">
+                                {selectedDate === todayStr ? 'Today' : new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' })}
+                            </span>
+                            <span className="text-sm font-bold">
+                                {new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => changeDate(1)}
+                            className="w-10 h-10 rounded-xl hover:bg-[var(--bg-primary)] flex items-center justify-center transition-colors"
+                        >
+                            <ChevronRight size={18} />
+                        </button>
                     </div>
-                    <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-widest">Day Streak</span>
+                    {selectedDate !== todayStr && (
+                        <button
+                            onClick={() => setSelectedDate(todayStr)}
+                            className="text-[10px] font-bold text-blue-500 hover:text-blue-600 mr-2"
+                        >
+                            Back to Today
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -346,7 +401,7 @@ const NutritionPage = () => {
                                             servingQty: 1,
                                             servingUnit: 'portion',
                                             mealType,
-                                            date: today
+                                            date: selectedDate
                                         };
                                         addFood(merged);
                                         setSearchResults([]);
@@ -445,13 +500,25 @@ const NutritionPage = () => {
 
             {/* Metrics & Progress */}
             <section className="flex flex-col gap-6">
-                <span className="section-label m-0">Body Metrics & History</span>
+                <div className="flex items-center justify-between">
+                    <span className="section-label m-0">Body Metrics & History</span>
+                    <button
+                        onClick={() => {
+                            const weightForDay = nutrition.weightHistory.find(h => h.date.startsWith(selectedDate))?.weight;
+                            setTempMetrics({ ...nutrition.metrics, weight: weightForDay || nutrition.metrics.weight });
+                            setIsEditingMetrics(true);
+                        }}
+                        className="text-[10px] uppercase font-bold tracking-widest text-blue-500 hover:text-blue-600 transition-colors"
+                    >
+                        Update Stats
+                    </button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {[
-                        { label: 'Weight', value: nutrition.metrics.weight, unit: 'kg', icon: Scale, field: 'weight' },
-                        { label: 'Height', value: nutrition.metrics.height, unit: 'cm', icon: ChevronDown, field: 'height' },
-                        { label: 'Age', value: nutrition.metrics.age, unit: 'yrs', icon: Clock, field: 'age' },
-                        { label: 'BMI', value: bmi, unit: '', icon: Info, field: '' }
+                        { label: 'Weight', value: selectedWeight, unit: 'kg', icon: Scale },
+                        { label: 'Height', value: nutrition.metrics.height, unit: 'cm', icon: ChevronDown },
+                        { label: 'Age', value: nutrition.metrics.age, unit: 'yrs', icon: Clock },
+                        { label: 'BMI', value: bmi, unit: '', icon: Info }
                     ].map(metric => (
                         <div key={metric.label} className="card p-5 flex flex-col gap-2">
                             <div className="flex justify-between items-center text-[var(--text-secondary)]">
@@ -459,67 +526,85 @@ const NutritionPage = () => {
                                 <metric.icon size={14} />
                             </div>
                             <div className="flex items-baseline gap-1">
-                                {metric.field ? (
-                                    <input
-                                        type="number"
-                                        value={metric.value}
-                                        onChange={(e) => updateMetrics(metric.field as any, Number(e.target.value))}
-                                        className="w-full bg-transparent border-none p-0 text-xl font-bold focus:ring-0! mb-0!"
-                                    />
-                                ) : (
-                                    <span className="text-xl font-bold">{metric.value}</span>
-                                )}
+                                <span className="text-xl font-bold">{metric.value || '--'}</span>
                                 <span className="text-[10px] font-bold text-[var(--text-secondary)]">{metric.unit}</span>
                             </div>
                         </div>
                     ))}
                 </div>
 
-                {/* Weight Chart */}
-                {weightData.length > 1 && (
-                    <div className="card p-6 h-[300px]">
-                        <div className="flex items-center justify-between mb-6">
-                            <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">Weight Trajectory</span>
-                            <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-[10px] font-bold">
-                                {Number(weightData[weightData.length - 1].weight) < Number(weightData[0].weight) ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
-                                {Math.abs(Number(weightData[weightData.length - 1].weight) - Number(weightData[0].weight)).toFixed(1)}kg
+                {/* Weight and BMI Charts */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="card p-6 min-h-[300px] flex flex-col justify-center">
+                        {weightData.length > 1 ? (
+                            <>
+                                <div className="flex items-center justify-between mb-6">
+                                    <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">Weight Trajectory</span>
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full text-[10px] font-bold">
+                                        {Number(weightData[weightData.length - 1].weight) < Number(weightData[0].weight) ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+                                        {Math.abs(Number(weightData[weightData.length - 1].weight) - Number(weightData[0].weight)).toFixed(1)}kg
+                                    </div>
+                                </div>
+                                <div className="h-[200px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={weightData}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                                            <XAxis dataKey="date" fontSize={10} tick={{ fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+                                            <YAxis hide domain={['dataMin - 2', 'dataMax + 2']} />
+                                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} itemStyle={{ color: 'var(--text-primary)' }} />
+                                            <Line type="monotone" dataKey="weight" stroke="var(--text-primary)" strokeWidth={3} dot={{ fill: 'var(--text-primary)', r: 4 }} activeDot={{ r: 6 }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center gap-4 text-center py-10 opacity-50">
+                                <div className="p-4 rounded-3xl bg-blue-500/10 text-blue-500">
+                                    <Scale size={32} />
+                                </div>
+                                <div>
+                                    <span className="text-sm font-bold block">No Trajectory Data</span>
+                                    <span className="text-[10px] uppercase font-bold tracking-widest">Add weight for another day to see progress</span>
+                                </div>
                             </div>
-                        </div>
-                        <ResponsiveContainer width="100%" height="80%">
-                            <LineChart data={weightData}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                                <XAxis
-                                    dataKey="date"
-                                    fontSize={10}
-                                    tick={{ fill: 'var(--text-secondary)' }}
-                                    axisLine={false}
-                                    tickLine={false}
-                                />
-                                <YAxis
-                                    hide
-                                    domain={['dataMin - 2', 'dataMax + 2']}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: 'var(--bg-elevated)',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: '12px',
-                                        fontSize: '12px'
-                                    }}
-                                    itemStyle={{ color: 'var(--text-primary)' }}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="weight"
-                                    stroke="var(--text-primary)"
-                                    strokeWidth={3}
-                                    dot={{ fill: 'var(--text-primary)', r: 4 }}
-                                    activeDot={{ r: 6 }}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                        )}
                     </div>
-                )}
+
+                    <div className="card p-6 min-h-[300px] flex flex-col justify-center">
+                        {weightData.length > 1 ? (
+                            <>
+                                <div className="flex items-center justify-between mb-6">
+                                    <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-secondary)]">BMI Trajectory</span>
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-purple-500/10 text-purple-500 rounded-full text-[10px] font-bold">
+                                        {Number(weightData[weightData.length - 1].bmi) < Number(weightData[0].bmi) ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+                                        {Math.abs(Number(weightData[weightData.length - 1].bmi) - Number(weightData[0].bmi)).toFixed(1)}
+                                    </div>
+                                </div>
+                                <div className="h-[200px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={weightData}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                                            <XAxis dataKey="date" fontSize={10} tick={{ fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
+                                            <YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
+                                            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} itemStyle={{ color: 'var(--text-primary)' }} />
+                                            <Line type="monotone" dataKey="bmi" stroke="#8b5cf6" strokeWidth={3} dot={{ fill: '#8b5cf6', r: 4 }} activeDot={{ r: 6 }} />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex flex-col items-center gap-4 text-center py-10 opacity-50">
+                                <div className="p-4 rounded-3xl bg-purple-500/10 text-purple-500">
+                                    <Info size={32} />
+                                </div>
+                                <div>
+                                    <span className="text-sm font-bold block">Incomplete BMI History</span>
+                                    <span className="text-[10px] uppercase font-bold tracking-widest">Trends appear after multiple weight logs</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             </section>
 
             {/* Modals */}
@@ -621,6 +706,71 @@ const NutritionPage = () => {
                                 </button>
                                 <button className="h-12 px-6 bg-[var(--bg-elevated)] rounded-xl font-bold active:scale-95 transition-transform" onClick={() => setIsConfigOpen(false)}>
                                     Dismiss
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Body Metrics Modal */}
+            {isEditingMetrics && (
+                <div className="modal-overlay">
+                    <div className="modal-card">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-500">
+                                <Scale size={24} />
+                            </div>
+                            <h3 className="text-2xl font-semibold">Update Metrics.</h3>
+                        </div>
+                        <div className="flex flex-col gap-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[10px] uppercase font-bold text-[var(--text-secondary)] ml-1">Weight (kg)</label>
+                                    <input
+                                        type="number"
+                                        value={tempMetrics.weight || ''}
+                                        onChange={(e) => setTempMetrics({ ...tempMetrics, weight: Number(e.target.value) })}
+                                        className="h-14!"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[10px] uppercase font-bold text-[var(--text-secondary)] ml-1">Height (cm)</label>
+                                    <input
+                                        type="number"
+                                        value={tempMetrics.height || ''}
+                                        onChange={(e) => setTempMetrics({ ...tempMetrics, height: Number(e.target.value) })}
+                                        className="h-14!"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[10px] uppercase font-bold text-[var(--text-secondary)] ml-1">Age (yrs)</label>
+                                    <input
+                                        type="number"
+                                        value={tempMetrics.age || ''}
+                                        onChange={(e) => setTempMetrics({ ...tempMetrics, age: Number(e.target.value) })}
+                                        className="h-14!"
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-[10px] uppercase font-bold text-[var(--text-secondary)] ml-1">Activity Level</label>
+                                    <select
+                                        value={tempMetrics.activityLevel}
+                                        onChange={(e) => setTempMetrics({ ...tempMetrics, activityLevel: e.target.value as any })}
+                                        className="h-14 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-2xl px-4 font-bold appearance-none!"
+                                    >
+                                        <option value="sedentary">Sedentary</option>
+                                        <option value="lightly active">Lightly Active</option>
+                                        <option value="moderately active">Moderately Active</option>
+                                        <option value="very active">Very Active</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex gap-4 pt-4">
+                                <button className="flex-1 h-12 bg-blue-500 text-white rounded-xl font-bold active:scale-95 transition-transform" onClick={saveMetrics}>
+                                    Confirm Changes
+                                </button>
+                                <button className="h-12 px-6 bg-[var(--bg-elevated)] rounded-xl font-bold active:scale-95 transition-transform" onClick={() => setIsEditingMetrics(false)}>
+                                    Cancel
                                 </button>
                             </div>
                         </div>
