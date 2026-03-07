@@ -190,6 +190,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 currentUserId.current = undefined;
                 setStore(getLocalStore());
                 setIsCloudSynced(false);
+                setIsReady(true);
             }
         });
 
@@ -207,8 +208,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         hasBooted.current = true;
 
         const boot = async () => {
+            let bootDone = false;
             const safetyTimeout = setTimeout(() => {
-                if (!isReady) {
+                if (!bootDone) {
                     console.warn('[LifeOS] Boot taking too long, forcing ready state');
                     setIsReady(true);
                 }
@@ -238,6 +240,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 console.error('[LifeOS] Boot error:', e);
                 setStore({ ...DEFAULT_STORE });
             } finally {
+                bootDone = true;
                 clearTimeout(safetyTimeout);
                 setIsReady(true);
             }
@@ -280,12 +283,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     const signOut = async () => {
-        await supabase.auth.signOut();
+        try {
+            await supabase.auth.signOut();
+        } catch (e) {
+            console.error('[LifeOS] Signout error:', e);
+        }
         currentUserId.current = undefined;
         hasBooted.current = false;
         setStore(getLocalStore());
-        // Use replace for a cleaner transition that doesn't mess with history
-        window.location.replace('/');
+        // Force a clean redirect to the home page
+        window.location.href = '/';
     };
 
     const setTasks = (tasks: Task[]) => setStore(prev => ({ ...prev, tasks }));
