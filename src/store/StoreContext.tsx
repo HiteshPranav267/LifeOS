@@ -115,7 +115,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const hasSyncedWithCloud = useRef<string | null>(null); // Tracks if we've pulled for the CURRENT user
 
     // Helper: Load data from cloud for a user
-    const loadCloudData = useCallback(async (userId: string): Promise<Store | null> => {
+    // Returns a discriminated result so we can tell apart "no data" from "error"
+    type CloudResult =
+        | { status: 'found'; data: Store }
+        | { status: 'new_user' }
+        | { status: 'error'; error: any };
+
+    const loadCloudData = useCallback(async (userId: string): Promise<CloudResult> => {
         try {
             const { data, error } = await supabase
                 .from(SYNC_TABLE)
@@ -124,18 +130,25 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 .single();
 
             if (data && data.data) {
-                return hydrateStore(data.data);
+                return { status: 'found', data: hydrateStore(data.data) };
             }
 
-            // No row found — new user
-            if (!error || error.code === 'PGRST116') {
-                return null; // Signals "new user"
+            // PGRST116 = "no rows returned" = genuinely new user
+            if (error && error.code === 'PGRST116') {
+                return { status: 'new_user' };
             }
 
-            return null;
+            // Any other error = something went wrong, do NOT treat as new user
+            if (error) {
+                console.error('[LifeOS] Cloud load error:', error);
+                return { status: 'error', error };
+            }
+
+            // Data row exists but data field is empty/null
+            return { status: 'new_user' };
         } catch (e) {
-            console.error('[LifeOS] Cloud load error:', e);
-            return null;
+            console.error('[LifeOS] Cloud load exception:', e);
+            return { status: 'error', error: e };
         }
     }, []);
 
@@ -171,14 +184,20 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             if (event === 'SIGNED_IN' && s?.user?.id && s.user.id !== currentUserId.current) {
                 currentUserId.current = s.user.id;
                 try {
-                    const cloudData = await loadCloudData(s.user.id);
-                    if (cloudData) {
-                        setStore(cloudData);
-                        saveLocalStore(cloudData, s.user.id);
-                    } else {
+                    const result = await loadCloudData(s.user.id);
+                    if (result.status === 'found') {
+                        setStore(result.data);
+                        saveLocalStore(result.data, s.user.id);
+                        hasSyncedWithCloud.current = s.user.id;
+                    } else if (result.status === 'new_user') {
                         const localData = getLocalStore(s.user.id);
                         setStore(localData);
-                        await saveToCloud(s.user.id, localData);
+                        hasSyncedWithCloud.current = s.user.id;
+                    } else {
+                        // Error — load local data but do NOT unlock cloud saving
+                        const localData = getLocalStore(s.user.id);
+                        setStore(localData);
+                        console.warn('[LifeOS] Post-login cloud fetch failed, cloud saving is LOCKED');
                     }
                 } catch (e) {
                     console.error('[LifeOS] Post-login load error:', e);
@@ -223,21 +242,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                 currentUserId.current = userId;
 
                 if (userId) {
-                    // 1. DONT set isReady yet - we need to pull first
-                    const cloudData = await loadCloudData(userId);
+                    const result = await loadCloudData(userId);
 
-                    if (cloudData) {
-                        // Success: We have cloud data. Pull it.
-                        setStore(cloudData);
-                        saveLocalStore(cloudData, userId);
-                        hasSyncedWithCloud.current = userId; // UNLOCK saving for this user
-                    } else {
-                        // Case: No data found OR error. 
-                        // We check if it was a true "New User" (PGRST116) in loadCloudData
+                    if (result.status === 'found') {
+                        // Cloud data exists — use it
+                        setStore(result.data);
+                        saveLocalStore(result.data, userId);
+                        hasSyncedWithCloud.current = userId; // UNLOCK saving
+                    } else if (result.status === 'new_user') {
+                        // Genuinely new user — safe to use local data and save to cloud
                         const localData = getLocalStore(userId);
                         setStore(localData);
-                        // We only unlock saving if we are confident we aren't about to overwrite
-                        hasSyncedWithCloud.current = userId;
+                        hasSyncedWithCloud.current = userId; // UNLOCK saving
+                    } else {
+                        // ERROR — load local data but keep cloud saving LOCKED
+                        const localData = getLocalStore(userId);
+                        setStore(localData);
+                        console.warn('[LifeOS] Cloud fetch failed during boot, cloud saving is LOCKED');
+                        // hasSyncedWithCloud stays null — saving stays blocked
                     }
                 } else {
                     // Guest user - always allowed to save locally
@@ -289,11 +311,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const forceCloudPull = async () => {
         const userId = session?.user?.id;
         if (!userId) return;
-        const cloudData = await loadCloudData(userId);
-        if (cloudData) {
-            setStore(cloudData);
-            saveLocalStore(cloudData, userId);
+        const result = await loadCloudData(userId);
+        if (result.status === 'found') {
+            setStore(result.data);
+            saveLocalStore(result.data, userId);
             setIsCloudSynced(true);
+            hasSyncedWithCloud.current = userId;
         }
     };
 
